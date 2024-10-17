@@ -2,132 +2,93 @@ package handler
 
 import (
 	"mpc/internal/domain"
-	"mpc/internal/infrastructure/auth"
 	"mpc/internal/usecase"
+	"mpc/pkg/utils"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	userUseCase *usecase.UserUseCase
-	jwtService  *auth.JWTService
+	authUC usecase.AuthUseCase
 }
 
-func NewAuthHandler(userUseCase *usecase.UserUseCase, jwtService *auth.JWTService) *AuthHandler {
+func NewAuthHandler(authUC usecase.AuthUseCase) *AuthHandler {
 	return &AuthHandler{
-		userUseCase: userUseCase,
-		jwtService:  jwtService,
+		authUC: authUC,
 	}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var loginRequest struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&loginRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := h.userUseCase.AuthenticateUser(c, loginRequest.Email, loginRequest.Password)
+	loginRequest, err := utils.ParseRequest[domain.LoginRequest](c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.jwtService.GenerateToken(user.ID)
+	user, accessToken, refreshToken, err := h.authUC.Login(c, loginRequest.Email, loginRequest.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	loginResponse := domain.LoginResponse(user)
+
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"user": loginResponse, "access_token": accessToken, "refresh_token": refreshToken})
 }
 
 func (h *AuthHandler) Signup(c *gin.Context) {
-	var signupRequest struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required,min=6"`
-	}
+	signupRequest, err := utils.ParseRequest[domain.SignupRequest](c)
 
-	if err := c.ShouldBindJSON(&signupRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	user, err := h.userUseCase.CreateUser(c, domain.CreateUserParams{
-		Email:    signupRequest.Email,
-		Password: signupRequest.Password,
-	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.jwtService.GenerateToken(user.ID)
+	user, wallet, accessToken, refreshToken, err := h.authUC.Signup(c, domain.CreateUserParams(signupRequest))
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		utils.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"token": token})
+	signupResponse := domain.SignupResponse{
+		ID:    user.ID,
+		Email: user.Email,
+	}
+
+	createWalletResponse := domain.CreateWalletResponse{
+		ID:      wallet.ID,
+		UserID:  wallet.UserID,
+		Address: wallet.Address,
+	}
+
+	utils.SuccessResponse(c, http.StatusCreated, gin.H{"user": signupResponse, "wallet": createWalletResponse, "access_token": accessToken, "refresh_token": refreshToken})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// In a stateless JWT setup, logout is typically handled client-side
-	// by removing the token. However, you can implement a token blacklist
-	// using Redis for a more robust logout mechanism.
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+	token, err := utils.GetAuthToken(c)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	h.authUC.Logout(c, token)
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
-		return
-	}
-
-	parts := strings.SplitN(authHeader, " ", 2)
-	if !(len(parts) == 2 && parts[0] == "Bearer") {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be Bearer {token}"})
-		return
-	}
-
-	claims, err := h.jwtService.ValidateToken(parts[1])
+	token, err := utils.GetAuthToken(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	newToken, err := h.jwtService.GenerateToken(claims.UserID)
+	accessToken, refreshToken, err := h.authUC.RefreshToken(c, token)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		utils.ErrorResponse(c, http.StatusUnauthorized, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": newToken})
-}
-
-func (h *AuthHandler) Me(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
-
-	user, err := h.userUseCase.GetUser(c, userID.(int64))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user data"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"id":    user.ID,
-		"email": user.Email,
-		// Add other non-sensitive user information here
-	})
+	utils.SuccessResponse(c, http.StatusOK, gin.H{"access_token": accessToken, "refresh_token": refreshToken})
 }

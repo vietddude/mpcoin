@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	App   AppConfig
-	DB    DBConfig
-	JWT   JWTConfig
-	Redis RedisConfig
+	App      AppConfig
+	DB       DBConfig
+	JWT      JWTConfig
+	Redis    RedisConfig
+	Ethereum EthereumConfig
 }
 
 type DBConfig struct {
@@ -28,6 +29,11 @@ type JWTConfig struct {
 	TokenDuration time.Duration `mapstructure:"TOKEN_DURATION"`
 }
 
+type EthereumConfig struct {
+	URL       string `mapstructure:"URL"`
+	SecretKey string `mapstructure:"SECRET_KEY"`
+}
+
 type RedisConfig struct {
 	Addr     string `mapstructure:"ADDR"`
 	Password string `mapstructure:"PASSWORD"`
@@ -36,15 +42,17 @@ type RedisConfig struct {
 
 // Define default values
 var defaults = map[string]string{
-	"DB.CONN_STR":        "postgres://viet:123@localhost:5432/mpcoin?sslmode=disable",
-	"DB.MAX_CONNECTIONS": "10",
-	"APP.PORT":           "8080",
-	"APP.ENV":            "development",
-	"JWT.SECRET_KEY":     "chirp-chirp",
-	"JWT.TOKEN_DURATION": "1h",
-	"REDIS.ADDR":         "localhost:6379",
-	"REDIS.PASSWORD":     "",
-	"REDIS.DB":           "0",
+	"DB.CONN_STR":         "postgres://viet:123@localhost:5432/mpcoin?sslmode=disable",
+	"DB.MAX_CONNECTIONS":  "10",
+	"APP.PORT":            "8080",
+	"APP.ENV":             "development",
+	"JWT.SECRET_KEY":      "chirp-chirp",
+	"JWT.TOKEN_DURATION":  "1h",
+	"REDIS.ADDR":          "localhost:6379",
+	"REDIS.PASSWORD":      "",
+	"REDIS.DB":            "0",
+	"ETHEREUM.URL":        "https://sepolia.infura.io/v3/<INFURA_PROJECT_ID>",
+	"ETHEREUM.SECRET_KEY": "<INFURA_SECRET_KEY>",
 }
 
 func Load() (*Config, error) {

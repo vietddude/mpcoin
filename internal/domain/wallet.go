@@ -3,23 +3,26 @@ package domain
 import (
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 type Wallet struct {
-	ID                  int64
-	UserID              int64
+	ID                  uuid.UUID
+	UserID              uuid.UUID
 	Address             string
-	PublicKey           string
-	EncryptedPrivateKey string
-	Balance             pgtype.Numeric
+	EncryptedPrivateKey []byte
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
 
 type CreateWalletParams struct {
-	UserID              int64
+	UserID              uuid.UUID
 	Address             string
-	PublicKey           string
-	EncryptedPrivateKey string
+	EncryptedPrivateKey []byte
+}
+
+type CreateWalletResponse struct {
+	ID      uuid.UUID `json:"id"`
+	UserID  uuid.UUID `json:"user_id"`
+	Address string    `json:"address"`
 }

@@ -12,33 +12,25 @@ import (
 )
 
 const createWallet = `-- name: CreateWallet :one
-INSERT INTO wallets (user_id, address, public_key, encrypted_private_key)
-VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, address, public_key, encrypted_private_key, balance, created_at, updated_at
+INSERT INTO wallets (user_id, address, encrypted_private_key)
+VALUES ($1, $2, $3)
+RETURNING id, user_id, address, encrypted_private_key, created_at, updated_at
 `
 
 type CreateWalletParams struct {
-	UserID              int32
+	UserID              pgtype.UUID
 	Address             string
-	PublicKey           string
-	EncryptedPrivateKey string
+	EncryptedPrivateKey []byte
 }
 
 func (q *Queries) CreateWallet(ctx context.Context, arg CreateWalletParams) (Wallet, error) {
-	row := q.db.QueryRow(ctx, createWallet,
-		arg.UserID,
-		arg.Address,
-		arg.PublicKey,
-		arg.EncryptedPrivateKey,
-	)
+	row := q.db.QueryRow(ctx, createWallet, arg.UserID, arg.Address, arg.EncryptedPrivateKey)
 	var i Wallet
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Address,
-		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.Balance,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -46,48 +38,37 @@ func (q *Queries) CreateWallet(ctx context.Context, arg CreateWalletParams) (Wal
 }
 
 const getWallet = `-- name: GetWallet :one
-SELECT id, user_id, address, public_key, encrypted_private_key, balance, created_at, updated_at FROM wallets
+SELECT id, user_id, address, encrypted_private_key, created_at, updated_at FROM wallets
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetWallet(ctx context.Context, id int32) (Wallet, error) {
+func (q *Queries) GetWallet(ctx context.Context, id pgtype.UUID) (Wallet, error) {
 	row := q.db.QueryRow(ctx, getWallet, id)
 	var i Wallet
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Address,
-		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.Balance,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const updateWalletBalance = `-- name: UpdateWalletBalance :one
-UPDATE wallets
-SET balance = balance + $2, updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, user_id, address, public_key, encrypted_private_key, balance, created_at, updated_at
+const getWalletByAddress = `-- name: GetWalletByAddress :one
+SELECT id, user_id, address, encrypted_private_key, created_at, updated_at FROM wallets
+WHERE address = $1 LIMIT 1
 `
 
-type UpdateWalletBalanceParams struct {
-	ID      int32
-	Balance pgtype.Numeric
-}
-
-func (q *Queries) UpdateWalletBalance(ctx context.Context, arg UpdateWalletBalanceParams) (Wallet, error) {
-	row := q.db.QueryRow(ctx, updateWalletBalance, arg.ID, arg.Balance)
+func (q *Queries) GetWalletByAddress(ctx context.Context, address string) (Wallet, error) {
+	row := q.db.QueryRow(ctx, getWalletByAddress, address)
 	var i Wallet
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Address,
-		&i.PublicKey,
 		&i.EncryptedPrivateKey,
-		&i.Balance,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

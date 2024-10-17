@@ -8,18 +8,55 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Balance struct {
+	ID        pgtype.UUID
+	WalletID  pgtype.UUID
+	ChainID   pgtype.UUID
+	TokenID   pgtype.UUID
+	Balance   pgtype.Numeric
+	UpdatedAt pgtype.Timestamptz
+}
+
+type Chain struct {
+	ID             pgtype.UUID
+	Name           string
+	ChainID        string
+	RpcUrl         string
+	NativeCurrency string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type Token struct {
+	ID              pgtype.UUID
+	ChainID         pgtype.UUID
+	ContractAddress string
+	Name            string
+	Symbol          string
+	Decimals        int32
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type Transaction struct {
-	ID           int32
-	FromWalletID int32
-	ToWalletID   int32
-	Amount       pgtype.Numeric
-	Status       string
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
+	ID          pgtype.UUID
+	WalletID    pgtype.UUID
+	ChainID     pgtype.UUID
+	FromAddress string
+	ToAddress   string
+	Amount      pgtype.Numeric
+	TokenID     pgtype.UUID
+	GasPrice    pgtype.Numeric
+	GasLimit    pgtype.Int8
+	Nonce       pgtype.Int8
+	Status      string
+	TxHash      pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type User struct {
-	ID           int32
+	ID           pgtype.UUID
 	Email        string
 	PasswordHash string
 	CreatedAt    pgtype.Timestamptz
@@ -27,12 +64,10 @@ type User struct {
 }
 
 type Wallet struct {
-	ID                  int32
-	UserID              int32
+	ID                  pgtype.UUID
+	UserID              pgtype.UUID
 	Address             string
-	PublicKey           string
-	EncryptedPrivateKey string
-	Balance             pgtype.Numeric
+	EncryptedPrivateKey []byte
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 }

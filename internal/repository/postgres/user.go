@@ -3,41 +3,102 @@ package postgres
 import (
 	"context"
 	"mpc/internal/domain"
+	sqlc "mpc/internal/infrastructure/db/sqlc"
+	"mpc/internal/repository"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UserRepository struct {
-	db *pgxpool.Pool
+type userRepository struct {
+	repository.BaseRepository
 }
 
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepo(dbPool *pgxpool.Pool) repository.UserRepository {
+	return &userRepository{
+		BaseRepository: repository.NewBaseRepo(dbPool),
+	}
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, params domain.CreateHashedUserParams) (domain.User, error) {
-	// Implement the database operation here
-	panic("not implemented")
+// Ensure UserRepository implements UserRepository
+var _ repository.UserRepository = (*userRepository)(nil)
+
+func (r *userRepository) CreateUser(ctx context.Context, params domain.CreateHashedUserParams) (domain.User, error) {
+	var user domain.User
+	err := r.WithTx(ctx, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		createdUser, err := q.CreateUser(ctx, sqlc.CreateUserParams{
+			Email:        params.Email,
+			PasswordHash: params.PasswordHash,
+		})
+		if err != nil {
+			return err
+		}
+		user = domain.User{
+			ID:           createdUser.ID.Bytes,
+			Email:        createdUser.Email,
+			PasswordHash: createdUser.PasswordHash,
+			CreatedAt:    createdUser.CreatedAt.Time,
+			UpdatedAt:    createdUser.UpdatedAt.Time,
+		}
+		return nil
+	})
+	return user, err
 }
 
-func (r *UserRepository) GetUser(ctx context.Context, id int64) (domain.User, error) {
-	// Implement the database operation here
-	panic("not implemented")
+func (r *userRepository) GetUser(ctx context.Context, id uuid.UUID) (domain.User, error) {
+	q := sqlc.New(r.DB())
+	dbUser, err := q.GetUser(ctx, pgtype.UUID{Bytes: id, Valid: true})
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	return domain.User{
+		ID:        dbUser.ID.Bytes,
+		Email:     dbUser.Email,
+		CreatedAt: dbUser.CreatedAt.Time,
+		UpdatedAt: dbUser.UpdatedAt.Time,
+	}, nil
 }
 
-func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
-	// Implement the database operation here
-	panic("not implemented")
+func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (domain.User, error) {
+	q := sqlc.New(r.DB())
+	dbUser, err := q.GetUserByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	return domain.User{
+		ID:           dbUser.ID.Bytes,
+		Email:        dbUser.Email,
+		PasswordHash: dbUser.PasswordHash,
+		CreatedAt:    dbUser.CreatedAt.Time,
+		UpdatedAt:    dbUser.UpdatedAt.Time,
+	}, nil
 }
 
-func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
-	// Implement the update logic here
-	// You may need to extract the user ID and update params from the user object
-	// and use them to update the database
-	panic("not implemented")
-}
+func (r *userRepository) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
+	err := r.WithTx(ctx, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		dbUser, err := q.UpdateUser(ctx, sqlc.UpdateUserParams{
+			ID:           pgtype.UUID{Bytes: user.ID, Valid: true},
+			Email:        user.Email,
+			PasswordHash: user.PasswordHash,
+		})
+		if err != nil {
+			return err
+		}
 
-func (r *UserRepository) DeleteUser(ctx context.Context, id int64) error {
-	// Implement the database operation here
-	panic("not implemented")
+		user = domain.User{
+			ID:           dbUser.ID.Bytes,
+			Email:        dbUser.Email,
+			PasswordHash: dbUser.PasswordHash,
+			CreatedAt:    dbUser.CreatedAt.Time,
+			UpdatedAt:    dbUser.UpdatedAt.Time,
+		}
+		return nil
+	})
+	return user, err
 }

@@ -1,18 +1,31 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID           int64
+	ID           uuid.UUID
 	Email        string
 	PasswordHash string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
-type CreateUserParams struct {
+type UserCredentials struct {
 	Email    string
-	Password string // Plain password
+	Password string
+}
+
+type CreateUserParams UserCredentials
+
+type LoginUserParams UserCredentials
+
+type UpdateUserParams struct {
+	ID uuid.UUID
+	UserCredentials
 }
 
 type CreateHashedUserParams struct {
@@ -20,18 +33,14 @@ type CreateHashedUserParams struct {
 	PasswordHash string
 }
 
-type CreateUser struct {
-	Email        string
-	PasswordHash string
+type CreateUserResponse struct {
+	ID        uuid.UUID
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-type LoginUserParams struct {
-	Email    string
-	Password string
-}
-
-type UpdateUserParams struct {
-	ID       int64
-	Email    string
-	Password string
+type LoginUserResponse struct {
+	ID    uuid.UUID
+	Email string
 }

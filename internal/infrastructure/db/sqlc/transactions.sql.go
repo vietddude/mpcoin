@@ -12,32 +12,53 @@ import (
 )
 
 const createTransaction = `-- name: CreateTransaction :one
-INSERT INTO transactions (from_wallet_id, to_wallet_id, amount, status)
-VALUES ($1, $2, $3, $4)
-RETURNING id, from_wallet_id, to_wallet_id, amount, status, created_at, updated_at
+INSERT INTO transactions (id, wallet_id , chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
 `
 
 type CreateTransactionParams struct {
-	FromWalletID int32
-	ToWalletID   int32
-	Amount       pgtype.Numeric
-	Status       string
+	ID          pgtype.UUID
+	WalletID    pgtype.UUID
+	ChainID     pgtype.UUID
+	FromAddress string
+	ToAddress   string
+	Amount      pgtype.Numeric
+	TokenID     pgtype.UUID
+	GasPrice    pgtype.Numeric
+	GasLimit    pgtype.Int8
+	Nonce       pgtype.Int8
+	Status      string
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
 	row := q.db.QueryRow(ctx, createTransaction,
-		arg.FromWalletID,
-		arg.ToWalletID,
+		arg.ID,
+		arg.WalletID,
+		arg.ChainID,
+		arg.FromAddress,
+		arg.ToAddress,
 		arg.Amount,
+		arg.TokenID,
+		arg.GasPrice,
+		arg.GasLimit,
+		arg.Nonce,
 		arg.Status,
 	)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
-		&i.FromWalletID,
-		&i.ToWalletID,
+		&i.WalletID,
+		&i.ChainID,
+		&i.FromAddress,
+		&i.ToAddress,
 		&i.Amount,
+		&i.TokenID,
+		&i.GasPrice,
+		&i.GasLimit,
+		&i.Nonce,
 		&i.Status,
+		&i.TxHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -45,46 +66,101 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 }
 
 const getTransaction = `-- name: GetTransaction :one
-SELECT id, from_wallet_id, to_wallet_id, amount, status, created_at, updated_at FROM transactions
+SELECT id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
 WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetTransaction(ctx context.Context, id int32) (Transaction, error) {
+func (q *Queries) GetTransaction(ctx context.Context, id pgtype.UUID) (Transaction, error) {
 	row := q.db.QueryRow(ctx, getTransaction, id)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
-		&i.FromWalletID,
-		&i.ToWalletID,
+		&i.WalletID,
+		&i.ChainID,
+		&i.FromAddress,
+		&i.ToAddress,
 		&i.Amount,
+		&i.TokenID,
+		&i.GasPrice,
+		&i.GasLimit,
+		&i.Nonce,
 		&i.Status,
+		&i.TxHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const updateTransactionStatus = `-- name: UpdateTransactionStatus :one
-UPDATE transactions
-SET status = $2, updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, from_wallet_id, to_wallet_id, amount, status, created_at, updated_at
+const getTransactionsByWalletID = `-- name: GetTransactionsByWalletID :many
+SELECT id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
+WHERE wallet_id = $1
 `
 
-type UpdateTransactionStatusParams struct {
-	ID     int32
-	Status string
+func (q *Queries) GetTransactionsByWalletID(ctx context.Context, walletID pgtype.UUID) ([]Transaction, error) {
+	rows, err := q.db.Query(ctx, getTransactionsByWalletID, walletID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Transaction
+	for rows.Next() {
+		var i Transaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.WalletID,
+			&i.ChainID,
+			&i.FromAddress,
+			&i.ToAddress,
+			&i.Amount,
+			&i.TokenID,
+			&i.GasPrice,
+			&i.GasLimit,
+			&i.Nonce,
+			&i.Status,
+			&i.TxHash,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) UpdateTransactionStatus(ctx context.Context, arg UpdateTransactionStatusParams) (Transaction, error) {
-	row := q.db.QueryRow(ctx, updateTransactionStatus, arg.ID, arg.Status)
+const updateTransaction = `-- name: UpdateTransaction :one
+UPDATE transactions 
+SET (status, tx_hash) = ($2, $3)
+WHERE id = $1
+RETURNING id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
+`
+
+type UpdateTransactionParams struct {
+	ID     pgtype.UUID
+	Status string
+	TxHash pgtype.Text
+}
+
+func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (Transaction, error) {
+	row := q.db.QueryRow(ctx, updateTransaction, arg.ID, arg.Status, arg.TxHash)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
-		&i.FromWalletID,
-		&i.ToWalletID,
+		&i.WalletID,
+		&i.ChainID,
+		&i.FromAddress,
+		&i.ToAddress,
 		&i.Amount,
+		&i.TokenID,
+		&i.GasPrice,
+		&i.GasLimit,
+		&i.Nonce,
 		&i.Status,
+		&i.TxHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

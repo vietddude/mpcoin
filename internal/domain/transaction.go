@@ -3,22 +3,74 @@ package domain
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Status string
+
+const (
+	StatusPending   Status = "pending"
+	StatusSuccess   Status = "success"
+	StatusFailed    Status = "failed"
+	StatusSubmitted Status = "submitted"
+)
+
 type Transaction struct {
-	ID           int64
-	FromWalletID int64
-	ToWalletID   int64
-	Amount       pgtype.Numeric
-	Status       string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID          uuid.UUID
+	WalletID    uuid.UUID
+	ChainID     uuid.UUID
+	FromAddress string
+	ToAddress   string
+	Amount      pgtype.Numeric
+	TokenID     uuid.UUID
+	GasPrice    pgtype.Numeric
+	GasLimit    int64
+	Nonce       int64
+	Status      Status
+	TxHash      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type CreateTransactionParams struct {
-	FromWalletID int64
-	ToWalletID   int64
-	Amount       pgtype.Numeric
-	Status       string
+	ID          uuid.UUID
+	WalletID    uuid.UUID
+	ChainID     uuid.UUID
+	FromAddress string
+	ToAddress   string
+	Amount      pgtype.Numeric
+	TokenID     uuid.UUID
+	GasPrice    pgtype.Numeric
+	GasLimit    int64
+	Nonce       int64
+	UnsignedTx  string
+	Status      Status
+}
+
+type SubmitTransactionParams struct {
+	ID uuid.UUID
+}
+
+type CreateTxnRequest struct {
+	WalletID    uuid.UUID      `json:"wallet_id" binding:"required"`
+	ChainID     uuid.UUID      `json:"chain_id" binding:"required"`
+	FromAddress string         `json:"from_address" binding:"required"`
+	ToAddress   string         `json:"to_address" binding:"required"`
+	Amount      pgtype.Numeric `json:"amount" binding:"required"`
+	TokenID     uuid.UUID      `json:"token_id" binding:"required"`
+	GasPrice    pgtype.Numeric `json:"gas_price" binding:"optional"`
+	GasLimit    int64          `json:"gas_limit" binding:"optional"`
+}
+
+type CreateTxnResponse struct {
+	ID uuid.UUID `json:"id"`
+}
+
+type SubmitTxnRequest struct {
+	ID uuid.UUID `json:"id" binding:"required"`
+}
+
+type SubmitTxnResponse struct {
+	TxHash string `json:"tx_hash"`
 }

@@ -26,6 +26,10 @@ func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
 	return &RedisClient{client: client}, nil
 }
 
+func (c *RedisClient) Close() error {
+	return c.client.Close()
+}
+
 func (c *RedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	return c.client.Set(ctx, key, value, expiration).Err()
 }

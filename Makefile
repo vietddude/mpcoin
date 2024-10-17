@@ -3,7 +3,7 @@ include .env
 export
 
 # Database migration commands
-GOOSE := goose -dir internal/db/migrations
+GOOSE := goose -dir internal/infrastructure/db/migrations
 
 # SQLC command
 SQLC := sqlc

@@ -1,23 +1,217 @@
+// Package usecase contains the business logic for the application.
 package usecase
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"math/big"
 	"mpc/internal/domain"
+	"mpc/internal/infrastructure/redis"
 	"mpc/internal/repository"
+	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/google/uuid"
 )
 
-type TransactionUseCase struct {
-	transactionRepo repository.TransactionRepository
+type TxnUseCase interface {
+	CreateTransaction(ctx context.Context, userID uuid.UUID, params domain.CreateTxnRequest) (uuid.UUID, error)
+	SubmitTransaction(ctx context.Context, id uuid.UUID, privateKey *ecdsa.PrivateKey) (domain.Transaction, error)
+	GetTransactions(ctx context.Context, walletID uuid.UUID) ([]domain.Transaction, error)
 }
 
-func NewTransactionUseCase(transactionRepo repository.TransactionRepository) *TransactionUseCase {
-	return &TransactionUseCase{transactionRepo: transactionRepo}
+type txnUseCase struct {
+	txnRepo     repository.TransactionRepository
+	ethRepo     repository.EthereumRepository
+	walletUC    WalletUseCase
+	redisClient redis.RedisClient
 }
 
-func (uc *TransactionUseCase) CreateTransaction(ctx context.Context, params domain.CreateTransactionParams) (domain.Transaction, error) {
-	return uc.transactionRepo.CreateTransaction(ctx, params)
+func NewTxnUC(txnRepo repository.TransactionRepository, ethRepo repository.EthereumRepository, walletUC WalletUseCase, redisClient redis.RedisClient) TxnUseCase {
+	return &txnUseCase{txnRepo: txnRepo, ethRepo: ethRepo, walletUC: walletUC, redisClient: redisClient}
 }
 
-func (uc *TransactionUseCase) GetTransaction(ctx context.Context, id int64) (domain.Transaction, error) {
-	return uc.transactionRepo.GetTransaction(ctx, id)
+var _ TxnUseCase = (*txnUseCase)(nil)
+
+// CreateTransaction creates a new transaction and stores it in the database.
+func (uc *txnUseCase) CreateTransaction(ctx context.Context, userID uuid.UUID, params domain.CreateTxnRequest) (uuid.UUID, error) {
+	wallet, err := uc.walletUC.GetWallet(ctx, params.WalletID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to get wallet: %w", err)
+	}
+
+	fromAddress := common.HexToAddress(wallet.Address)
+	toAddress := common.HexToAddress(params.ToAddress)
+
+	amountInWei := new(big.Int).Mul(params.Amount.Int, big.NewInt(1e18))
+
+	unsignedTx, err := uc.ethRepo.CreateUnsignedTransaction(fromAddress, toAddress, amountInWei)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to create unsigned transaction: %w", err)
+	}
+
+	// Serialize the unsigned transaction
+	unsignedTxData, err := unsignedTx.MarshalBinary()
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to serialize unsigned transaction: %w", err)
+	}
+
+	// Encrypt the unsigned transaction data
+	encryptedData, err := uc.encryptData(unsignedTxData)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to encrypt transaction data: %w", err)
+	}
+
+	txID := uuid.New()
+	err = uc.redisClient.Set(ctx, fmt.Sprintf("transaction:%s", txID), encryptedData, 24*time.Hour)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to save encrypted transaction to Redis: %w", err)
+	}
+
+	transaction := domain.CreateTransactionParams{
+		ID:          txID,
+		WalletID:    params.WalletID,
+		ChainID:     params.ChainID,
+		FromAddress: params.FromAddress,
+		ToAddress:   params.ToAddress,
+		Amount:      params.Amount,
+		TokenID:     params.TokenID,
+		GasPrice:    params.GasPrice,
+		GasLimit:    params.GasLimit,
+		Status:      domain.StatusPending,
+	}
+
+	_, err = uc.txnRepo.CreateTransaction(ctx, transaction)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("failed to save transaction to database: %w", err)
+	}
+
+	return txID, nil
+}
+
+// SubmitTransaction signs and submits a transaction to the Ethereum network.
+func (uc *txnUseCase) SubmitTransaction(ctx context.Context, id uuid.UUID, privateKey *ecdsa.PrivateKey) (domain.Transaction, error) {
+	// Retrieve the encrypted transaction from Redis
+	encryptedData, err := uc.redisClient.Get(ctx, fmt.Sprintf("transaction:%s", id))
+	if err != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to get transaction from Redis: %w", err)
+	}
+
+	// Decrypt the transaction data
+	unsignedTxData, err := uc.decryptData(encryptedData)
+	if err != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to decrypt transaction data: %w", err)
+	}
+
+	var unsignedTx types.Transaction
+	err = unsignedTx.UnmarshalBinary(unsignedTxData)
+	if err != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to deserialize unsigned transaction: %w", err)
+	}
+
+	signedTx, err := uc.ethRepo.SignTransaction(&unsignedTx, privateKey)
+	if err != nil {
+		return uc.updateTransactionStatus(ctx, id, domain.StatusFailed, err)
+	}
+
+	txHash, err := uc.ethRepo.SubmitTransaction(signedTx)
+	if err != nil {
+		return uc.updateTransactionStatus(ctx, id, domain.StatusFailed, err)
+	}
+
+	transaction, err := uc.txnRepo.GetTransaction(ctx, id)
+	if err != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to get transaction from database: %w", err)
+	}
+
+	transaction.Status = domain.StatusSubmitted
+	transaction.TxHash = txHash.Hex()
+
+	if err := uc.txnRepo.UpdateTransaction(ctx, transaction); err != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to update transaction in database: %w", err)
+	}
+
+	if err := uc.redisClient.Delete(ctx, fmt.Sprintf("transaction:%s", id)); err != nil {
+		log.Printf("Failed to delete submitted transaction from Redis: %v", err)
+	}
+
+	return transaction, nil
+}
+
+// GetTransactions retrieves all transactions for a given user ID.
+func (uc *txnUseCase) GetTransactions(ctx context.Context, walletID uuid.UUID) ([]domain.Transaction, error) {
+	return uc.txnRepo.GetTransactionsByWalletID(ctx, walletID)
+}
+
+func (uc *txnUseCase) updateTransactionStatus(ctx context.Context, id uuid.UUID, status domain.Status, err error) (domain.Transaction, error) {
+	transaction, dbErr := uc.txnRepo.GetTransaction(ctx, id)
+	if dbErr != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to get transaction: %w (original error: %v)", dbErr, err)
+	}
+
+	transaction.Status = status
+
+	if dbErr := uc.txnRepo.UpdateTransaction(ctx, transaction); dbErr != nil {
+		return domain.Transaction{}, fmt.Errorf("failed to update transaction status: %w (original error: %v)", dbErr, err)
+	}
+
+	return transaction, err
+}
+
+// Encryption helper function
+func (uc *txnUseCase) encryptData(data []byte) (string, error) {
+	key := []byte("your-32-byte-secret-key-here!") // Replace with a secure key
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// Decryption helper function
+func (uc *txnUseCase) decryptData(encryptedData string) ([]byte, error) {
+	key := []byte("your-32-byte-secret-key-here!") // Replace with the same secure key used for encryption
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedData)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
 }
