@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"mpc/internal/domain"
 	"mpc/internal/repository"
 
@@ -12,6 +13,7 @@ import (
 type WalletUseCase interface {
 	CreateWallet(ctx context.Context, userID uuid.UUID) (domain.Wallet, error)
 	GetWallet(ctx context.Context, id uuid.UUID) (domain.Wallet, error)
+	GetPrivateKey(ctx context.Context, userID uuid.UUID) (*ecdsa.PrivateKey, error)
 }
 
 type walletUseCase struct {
@@ -51,4 +53,17 @@ func (uc *walletUseCase) CreateWallet(ctx context.Context, userID uuid.UUID) (do
 
 func (uc *walletUseCase) GetWallet(ctx context.Context, id uuid.UUID) (domain.Wallet, error) {
 	return uc.walletRepo.GetWallet(ctx, id)
+}
+
+func (uc *walletUseCase) GetPrivateKey(ctx context.Context, userID uuid.UUID) (*ecdsa.PrivateKey, error) {
+	wallet, err := uc.walletRepo.GetWalletByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	privateKeyBytes, err := uc.ethRepo.DecryptPrivateKey(wallet.EncryptedPrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.ToECDSA(privateKeyBytes)
 }

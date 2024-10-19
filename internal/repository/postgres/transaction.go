@@ -86,8 +86,16 @@ func (r *transactionRepository) GetTransaction(ctx context.Context, id uuid.UUID
 }
 
 func (r *transactionRepository) UpdateTransaction(ctx context.Context, transaction domain.Transaction) error {
-	// Implement the database operation here
-	panic("not implemented")
+	q := sqlc.New(r.DB())
+	_, err := q.UpdateTransaction(ctx, sqlc.UpdateTransactionParams{
+		ID:     pgtype.UUID{Bytes: transaction.ID, Valid: true},
+		Status: string(transaction.Status),
+		TxHash: pgtype.Text{String: transaction.TxHash, Valid: transaction.TxHash != ""},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *transactionRepository) GetTransactions(ctx context.Context, userID uuid.UUID) ([]domain.Transaction, error) {

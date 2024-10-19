@@ -22,6 +22,7 @@ type UserRepository interface {
 type WalletRepository interface {
 	CreateWallet(ctx context.Context, params domain.CreateWalletParams) (domain.Wallet, error)
 	GetWallet(ctx context.Context, id uuid.UUID) (domain.Wallet, error)
+	GetWalletByUserID(ctx context.Context, userID uuid.UUID) (domain.Wallet, error)
 	GetWalletByAddress(ctx context.Context, address string) (domain.Wallet, error)
 	DBTransaction
 }

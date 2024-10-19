@@ -22,7 +22,7 @@ type Transaction struct {
 	ChainID     uuid.UUID
 	FromAddress string
 	ToAddress   string
-	Amount      pgtype.Numeric
+	Amount      string
 	TokenID     uuid.UUID
 	GasPrice    pgtype.Numeric
 	GasLimit    int64
@@ -39,7 +39,7 @@ type CreateTransactionParams struct {
 	ChainID     uuid.UUID
 	FromAddress string
 	ToAddress   string
-	Amount      pgtype.Numeric
+	Amount      string
 	TokenID     uuid.UUID
 	GasPrice    pgtype.Numeric
 	GasLimit    int64
@@ -53,14 +53,11 @@ type SubmitTransactionParams struct {
 }
 
 type CreateTxnRequest struct {
-	WalletID    uuid.UUID      `json:"wallet_id" binding:"required"`
-	ChainID     uuid.UUID      `json:"chain_id" binding:"required"`
-	FromAddress string         `json:"from_address" binding:"required"`
-	ToAddress   string         `json:"to_address" binding:"required"`
-	Amount      pgtype.Numeric `json:"amount" binding:"required"`
-	TokenID     uuid.UUID      `json:"token_id" binding:"required"`
-	GasPrice    pgtype.Numeric `json:"gas_price" binding:"optional"`
-	GasLimit    int64          `json:"gas_limit" binding:"optional"`
+	WalletID  uuid.UUID `json:"wallet_id" binding:"required"`
+	ChainID   uuid.UUID `json:"chain_id" binding:"required"`
+	ToAddress string    `json:"to_address" binding:"required"`
+	Amount    string    `json:"amount" binding:"required"`
+	TokenID   uuid.UUID `json:"token_id" binding:"required"`
 }
 
 type CreateTxnResponse struct {
@@ -68,7 +65,7 @@ type CreateTxnResponse struct {
 }
 
 type SubmitTxnRequest struct {
-	ID uuid.UUID `json:"id" binding:"required"`
+	ID uuid.UUID `json:"txn_id" binding:"required"`
 }
 
 type SubmitTxnResponse struct {

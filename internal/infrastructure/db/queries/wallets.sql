@@ -11,3 +11,6 @@ WHERE id = $1 LIMIT 1;
 SELECT * FROM wallets
 WHERE address = $1 LIMIT 1;
 
+-- name: GetWalletByUserID :one
+SELECT * FROM wallets
+WHERE user_id = $1 LIMIT 1;

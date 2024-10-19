@@ -78,3 +78,17 @@ func (r *walletRepository) GetWalletByAddress(ctx context.Context, address strin
 		EncryptedPrivateKey: wallet.EncryptedPrivateKey,
 	}, nil
 }
+
+func (r *walletRepository) GetWalletByUserID(ctx context.Context, userID uuid.UUID) (domain.Wallet, error) {
+	q := sqlc.New(r.DB())
+	wallet, err := q.GetWalletByUserID(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		return domain.Wallet{}, err
+	}
+	return domain.Wallet{
+		ID:                  wallet.ID.Bytes,
+		UserID:              wallet.UserID.Bytes,
+		Address:             wallet.Address,
+		EncryptedPrivateKey: wallet.EncryptedPrivateKey,
+	}, nil
+}

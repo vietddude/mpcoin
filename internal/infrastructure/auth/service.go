@@ -78,7 +78,7 @@ func (s *JWTService) ValidateToken(ctx context.Context, tokenString string, toke
 		return nil, err
 	}
 
-	fmt.Println("validate token", token)
+	fmt.Println("validate token...")
 	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
 		if claims.Type != tokenType {
 			return nil, errors.New("invalid token type")

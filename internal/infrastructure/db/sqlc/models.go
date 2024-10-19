@@ -44,7 +44,7 @@ type Transaction struct {
 	ChainID     pgtype.UUID
 	FromAddress string
 	ToAddress   string
-	Amount      pgtype.Numeric
+	Amount      string
 	TokenID     pgtype.UUID
 	GasPrice    pgtype.Numeric
 	GasLimit    pgtype.Int8

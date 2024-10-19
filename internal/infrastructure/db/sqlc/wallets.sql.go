@@ -74,3 +74,22 @@ func (q *Queries) GetWalletByAddress(ctx context.Context, address string) (Walle
 	)
 	return i, err
 }
+
+const getWalletByUserID = `-- name: GetWalletByUserID :one
+SELECT id, user_id, address, encrypted_private_key, created_at, updated_at FROM wallets
+WHERE user_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetWalletByUserID(ctx context.Context, userID pgtype.UUID) (Wallet, error) {
+	row := q.db.QueryRow(ctx, getWalletByUserID, userID)
+	var i Wallet
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Address,
+		&i.EncryptedPrivateKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
