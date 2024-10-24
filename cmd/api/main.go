@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	_ "mpc/docs"
 	"mpc/internal/delivery/http"
+	_ "mpc/internal/domain"
 	"mpc/internal/infrastructure/auth"
 	"mpc/internal/infrastructure/config"
 	"mpc/internal/infrastructure/db"
@@ -13,6 +15,14 @@ import (
 	"mpc/internal/usecase"
 )
 
+// @title MPC API
+// @version 1.0
+// @description This is the API documentation for the MPC project.
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func main() {
 
 	// config

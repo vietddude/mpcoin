@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func NewRouter(
@@ -35,6 +37,8 @@ func NewRouter(
 		{
 			health.GET("/", healthHandler.HealthCheck)
 		}
+		
+		v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 		auth := v1.Group("/auth")
 		{

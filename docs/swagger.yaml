@@ -1,0 +1,313 @@
+basePath: /api/v1
+definitions:
+  docs.CreateTxnResponse:
+    properties:
+      message:
+        type: string
+      txn_id:
+        type: string
+    type: object
+  docs.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/mpc_internal_domain.LoginResponse'
+    type: object
+  docs.RefreshResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  docs.SignupResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/mpc_internal_domain.SignupResponse'
+      wallet:
+        $ref: '#/definitions/mpc_internal_domain.CreateWalletResponse'
+    type: object
+  docs.SubmitTnxResponse:
+    properties:
+      message:
+        type: string
+      tnx_hash:
+        type: string
+    type: object
+  mpc_internal_domain.CreateTxnRequest:
+    properties:
+      amount:
+        type: string
+      chain_id:
+        type: string
+      to_address:
+        type: string
+      token_id:
+        type: string
+      wallet_id:
+        type: string
+    required:
+    - amount
+    - chain_id
+    - to_address
+    - token_id
+    - wallet_id
+    type: object
+  mpc_internal_domain.CreateWalletResponse:
+    properties:
+      address:
+        type: string
+      id:
+        type: string
+      user_id:
+        type: string
+    type: object
+  mpc_internal_domain.LoginRequest:
+    properties:
+      email:
+        example: admin@email.com
+        type: string
+      password:
+        example: "12345678"
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  mpc_internal_domain.LoginResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+    type: object
+  mpc_internal_domain.SignupRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  mpc_internal_domain.SignupResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+    type: object
+  mpc_internal_domain.SubmitTxnRequest:
+    properties:
+      txn_id:
+        type: string
+    required:
+    - txn_id
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is the API documentation for the MPC project.
+  title: MPC API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns access and refresh tokens along
+        with user details.
+      parameters:
+      - description: Login Request containing email and password
+        in: body
+        name: loginRequest
+        required: true
+        schema:
+          $ref: '#/definitions/mpc_internal_domain.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful login response with user details, access token,
+            and refresh token
+          schema:
+            $ref: '#/definitions/docs.LoginResponse'
+        "400":
+          description: Bad request error due to invalid input
+          schema:
+            type: string
+        "401":
+          description: Unauthorized error due to incorrect email or password
+          schema:
+            type: string
+      summary: User Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logs out a user by invalidating the refresh token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logged out successfully
+          schema:
+            type: string
+        "401":
+          description: Unauthorized error due to invalid token
+          schema:
+            type: string
+      summary: User Logout
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refreshes the access token using the refresh token.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response with new access token and refresh token
+          schema:
+            $ref: '#/definitions/docs.RefreshResponse'
+        "401":
+          description: Unauthorized error due to invalid token
+          schema:
+            type: string
+      summary: Refresh Token
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user and returns user details, wallet details,
+        access token, and refresh token.
+      parameters:
+      - description: Signup Request containing email and password
+        in: body
+        name: signupRequest
+        required: true
+        schema:
+          $ref: '#/definitions/mpc_internal_domain.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful signup response with user details, wallet details,
+            access token, and refresh token
+          schema:
+            $ref: '#/definitions/docs.SignupResponse'
+        "400":
+          description: Bad request error due to invalid input
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: User Signup
+      tags:
+      - auth
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Check the health of the application
+      produces:
+      - application/json
+      responses: {}
+      summary: Health Check
+      tags:
+      - health
+  /transactions/create:
+    post:
+      consumes:
+      - application/json
+      description: Create a new transaction
+      parameters:
+      - description: Create Transaction Request
+        in: body
+        name: createTxnRequest
+        required: true
+        schema:
+          $ref: '#/definitions/mpc_internal_domain.CreateTxnRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/docs.CreateTxnResponse'
+        "400":
+          description: Bad request error due to invalid input
+          schema:
+            type: string
+        "401":
+          description: Unauthorized error due to invalid token
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Create Transaction
+      tags:
+      - transaction
+  /transactions/submit:
+    post:
+      consumes:
+      - application/json
+      description: Submit a transaction
+      parameters:
+      - description: Submit Transaction Request
+        in: body
+        name: submitTxnRequest
+        required: true
+        schema:
+          $ref: '#/definitions/mpc_internal_domain.SubmitTxnRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/docs.SubmitTnxResponse'
+        "400":
+          description: Bad request error due to invalid input
+          schema:
+            type: string
+        "401":
+          description: Unauthorized error due to invalid token
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Submit Transaction
+      tags:
+      - transaction
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

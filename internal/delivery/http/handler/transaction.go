@@ -22,6 +22,19 @@ func (h *TxnHandler) GetTransactions(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "Transactions retrieved"})
 }
 
+// CreateTransaction godoc
+// @Summary Create Transaction
+// @Description Create a new transaction
+// @Tags transaction
+// @Accept json
+// @Produce json
+// @Param createTxnRequest body domain.CreateTxnRequest true "Create Transaction Request"
+// @Success 201 {object} docs.CreateTxnResponse "Successful response"
+// @Failure 400 {string} string "Bad request error due to invalid input"
+// @Failure 401 {string} string "Unauthorized error due to invalid token"
+// @Failure 500 {string} string "Internal server error"
+// @Router /transactions/create [post]
+// @Security ApiKeyAuth
 func (h *TxnHandler) CreateTransaction(c *gin.Context) {
 	// Get userID from auth middleware
 	userIDInterface, exists := c.Get("userID")
@@ -55,6 +68,19 @@ func (h *TxnHandler) CreateTransaction(c *gin.Context) {
 	})
 }
 
+// SubmitTransaction godoc
+// @Summary Submit Transaction
+// @Description Submit a transaction
+// @Tags transaction
+// @Accept json
+// @Produce json
+// @Param submitTxnRequest body domain.SubmitTxnRequest true "Submit Transaction Request"
+// @Success 200 {object} docs.SubmitTnxResponse "Successful response"
+// @Failure 400 {string} string "Bad request error due to invalid input"
+// @Failure 401 {string} string "Unauthorized error due to invalid token"
+// @Failure 500 {string} string "Internal server error"
+// @Router /transactions/submit [post]
+// @Security ApiKeyAuth
 func (h *TxnHandler) SubmitTransaction(c *gin.Context) {
 	userIDInterface, exists := c.Get("userID")
 	if !exists {

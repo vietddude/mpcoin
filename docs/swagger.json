@@ -1,0 +1,473 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API documentation for the MPC project.",
+        "title": "MPC API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Authenticates a user and returns access and refresh tokens along with user details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User Login",
+                "parameters": [
+                    {
+                        "description": "Login Request containing email and password",
+                        "name": "loginRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mpc_internal_domain.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful login response with user details, access token, and refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/docs.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request error due to invalid input",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized error due to incorrect email or password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Logs out a user by invalidating the refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User Logout",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized error due to invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refreshes the access token using the refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh Token",
+                "responses": {
+                    "200": {
+                        "description": "Successful response with new access token and refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/docs.RefreshResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized error due to invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/signup": {
+            "post": {
+                "description": "Registers a new user and returns user details, wallet details, access token, and refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User Signup",
+                "parameters": [
+                    {
+                        "description": "Signup Request containing email and password",
+                        "name": "signupRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mpc_internal_domain.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful signup response with user details, wallet details, access token, and refresh token",
+                        "schema": {
+                            "$ref": "#/definitions/docs.SignupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request error due to invalid input",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check the health of the application",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health Check",
+                "responses": {}
+            }
+        },
+        "/transactions/create": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a new transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transaction"
+                ],
+                "summary": "Create Transaction",
+                "parameters": [
+                    {
+                        "description": "Create Transaction Request",
+                        "name": "createTxnRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mpc_internal_domain.CreateTxnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successful response",
+                        "schema": {
+                            "$ref": "#/definitions/docs.CreateTxnResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request error due to invalid input",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized error due to invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/submit": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Submit a transaction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transaction"
+                ],
+                "summary": "Submit Transaction",
+                "parameters": [
+                    {
+                        "description": "Submit Transaction Request",
+                        "name": "submitTxnRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mpc_internal_domain.SubmitTxnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "schema": {
+                            "$ref": "#/definitions/docs.SubmitTnxResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request error due to invalid input",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized error due to invalid token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "docs.CreateTxnResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "txn_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "docs.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/mpc_internal_domain.LoginResponse"
+                }
+            }
+        },
+        "docs.RefreshResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "docs.SignupResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/mpc_internal_domain.SignupResponse"
+                },
+                "wallet": {
+                    "$ref": "#/definitions/mpc_internal_domain.CreateWalletResponse"
+                }
+            }
+        },
+        "docs.SubmitTnxResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "tnx_hash": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpc_internal_domain.CreateTxnRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "chain_id",
+                "to_address",
+                "token_id",
+                "wallet_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "chain_id": {
+                    "type": "string"
+                },
+                "to_address": {
+                    "type": "string"
+                },
+                "token_id": {
+                    "type": "string"
+                },
+                "wallet_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpc_internal_domain.CreateWalletResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpc_internal_domain.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@email.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "12345678"
+                }
+            }
+        },
+        "mpc_internal_domain.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpc_internal_domain.SignupRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                }
+            }
+        },
+        "mpc_internal_domain.SignupResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mpc_internal_domain.SubmitTxnRequest": {
+            "type": "object",
+            "required": [
+                "txn_id"
+            ],
+            "properties": {
+                "txn_id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

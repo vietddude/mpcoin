@@ -3,8 +3,8 @@ package domain
 import "github.com/google/uuid"
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required,email" example:"admin@email.com"`
+	Password string `json:"password" binding:"required" example:"12345678"`
 }
 
 type SignupRequest struct {
