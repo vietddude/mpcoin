@@ -5,6 +5,7 @@ import (
 	"mpc/internal/delivery/http/middleware"
 	"mpc/internal/infrastructure/auth"
 	"mpc/internal/usecase"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -37,7 +38,7 @@ func NewRouter(
 		{
 			health.GET("/", healthHandler.HealthCheck)
 		}
-		
+
 		v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 		auth := v1.Group("/auth")
@@ -69,5 +70,10 @@ func NewRouter(
 			transactions.POST("/submit", txnHandler.SubmitTransaction)
 		}
 	}
+
+	// Redirect to swagger docs
+	router.GET("/docs", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/api/v1/swagger/index.html")
+	})
 	return router
 }
