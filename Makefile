@@ -8,8 +8,17 @@ GOOSE := goose -dir internal/infrastructure/db/migrations
 # SQLC command
 SQLC := sqlc
 
-.PHONY: migrate-create migrate-up migrate-down migrate-status db-reset sqlc-generate sqlc-verify
+# Docker Compose files
+DOCKER_COMPOSE_FILE := docker-compose.yml
+DOCKER_COMPOSE_KAFKA_FILE := docker-compose.kafka.yml
 
+# Go commands
+API_CMD := cmd/api/main.go
+WORKER_CMD := cmd/worker/main.go
+
+.PHONY: migrate-create migrate-up migrate-down migrate-status db-reset sqlc-generate sqlc-verify build run run-local run-worker-local test up down clean help
+
+# Migration commands
 migrate-create:
 	@read -p "Enter migration name: " name; \
 	$(GOOSE) -s create $$name sql
@@ -34,26 +43,36 @@ sqlc-verify:
 	$(SQLC) verify
 
 # Build commands
-.PHONY: build run
-
 build:
-	go build -o bin/api cmd/api/main.go
+	go build -o bin/api $(API_CMD)
 
 run: build
 	./bin/api
 
 run-local:
-	go run cmd/api/main.go
+	go run $(API_CMD)
+
+run-worker-local:
+	go run $(WORKER_CMD)
 
 # Test commands
-.PHONY: test
-
 test:
 	go test -v ./...
 
-# Help command
-.PHONY: help
+# Docker commands
+up:
+	docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
+	docker-compose -f $(DOCKER_COMPOSE_KAFKA_FILE) up -d
 
+down:
+	docker-compose -f $(DOCKER_COMPOSE_FILE) down
+	docker-compose -f $(DOCKER_COMPOSE_KAFKA_FILE) down
+
+clean:
+	docker-compose -f $(DOCKER_COMPOSE_FILE) down -v
+	docker-compose -f $(DOCKER_COMPOSE_KAFKA_FILE) down -v
+
+# Help command
 help:
 	@echo "Available commands:"
 	@echo "  migrate-create  - Create a new migration file"
@@ -65,4 +84,9 @@ help:
 	@echo "  sqlc-verify     - Verify SQL queries against the schema"
 	@echo "  build           - Build the application"
 	@echo "  run             - Build and run the application"
+	@echo "  run-local       - Run the API locally without building"
+	@echo "  run-worker-local - Run the worker locally"
 	@echo "  test            - Run tests"
+	@echo "  up              - Start all Docker services"
+	@echo "  down            - Stop all Docker services"
+	@echo "  clean           - Stop all Docker services and remove volumes"

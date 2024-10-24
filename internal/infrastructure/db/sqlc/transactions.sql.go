@@ -12,23 +12,22 @@ import (
 )
 
 const createTransaction = `-- name: CreateTransaction :one
-INSERT INTO transactions (id, wallet_id , chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
+INSERT INTO transactions (id, wallet_id , chain_id, to_address, amount, token_id, gas_price, gas_limit, nonce, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, wallet_id, chain_id, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
 `
 
 type CreateTransactionParams struct {
-	ID          pgtype.UUID
-	WalletID    pgtype.UUID
-	ChainID     pgtype.UUID
-	FromAddress string
-	ToAddress   string
-	Amount      string
-	TokenID     pgtype.UUID
-	GasPrice    pgtype.Numeric
-	GasLimit    pgtype.Int8
-	Nonce       pgtype.Int8
-	Status      string
+	ID        pgtype.UUID
+	WalletID  pgtype.UUID
+	ChainID   pgtype.UUID
+	ToAddress string
+	Amount    string
+	TokenID   pgtype.UUID
+	GasPrice  pgtype.Text
+	GasLimit  pgtype.Text
+	Nonce     pgtype.Int8
+	Status    string
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
@@ -36,7 +35,6 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.ID,
 		arg.WalletID,
 		arg.ChainID,
-		arg.FromAddress,
 		arg.ToAddress,
 		arg.Amount,
 		arg.TokenID,
@@ -50,7 +48,6 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.ID,
 		&i.WalletID,
 		&i.ChainID,
-		&i.FromAddress,
 		&i.ToAddress,
 		&i.Amount,
 		&i.TokenID,
@@ -66,7 +63,7 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 }
 
 const getTransaction = `-- name: GetTransaction :one
-SELECT id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
+SELECT id, wallet_id, chain_id, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
 WHERE id = $1 LIMIT 1
 `
 
@@ -77,7 +74,6 @@ func (q *Queries) GetTransaction(ctx context.Context, id pgtype.UUID) (Transacti
 		&i.ID,
 		&i.WalletID,
 		&i.ChainID,
-		&i.FromAddress,
 		&i.ToAddress,
 		&i.Amount,
 		&i.TokenID,
@@ -93,7 +89,7 @@ func (q *Queries) GetTransaction(ctx context.Context, id pgtype.UUID) (Transacti
 }
 
 const getTransactionsByWalletID = `-- name: GetTransactionsByWalletID :many
-SELECT id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
+SELECT id, wallet_id, chain_id, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at FROM transactions
 WHERE wallet_id = $1
 `
 
@@ -110,7 +106,6 @@ func (q *Queries) GetTransactionsByWalletID(ctx context.Context, walletID pgtype
 			&i.ID,
 			&i.WalletID,
 			&i.ChainID,
-			&i.FromAddress,
 			&i.ToAddress,
 			&i.Amount,
 			&i.TokenID,
@@ -134,25 +129,34 @@ func (q *Queries) GetTransactionsByWalletID(ctx context.Context, walletID pgtype
 
 const updateTransaction = `-- name: UpdateTransaction :one
 UPDATE transactions 
-SET (status, tx_hash) = ($2, $3)
+SET (status, tx_hash, gas_price, gas_limit, nonce) = ($2, $3, $4, $5, $6)
 WHERE id = $1
-RETURNING id, wallet_id, chain_id, from_address, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
+RETURNING id, wallet_id, chain_id, to_address, amount, token_id, gas_price, gas_limit, nonce, status, tx_hash, created_at, updated_at
 `
 
 type UpdateTransactionParams struct {
-	ID     pgtype.UUID
-	Status string
-	TxHash pgtype.Text
+	ID       pgtype.UUID
+	Status   string
+	TxHash   pgtype.Text
+	GasPrice pgtype.Text
+	GasLimit pgtype.Text
+	Nonce    pgtype.Int8
 }
 
 func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (Transaction, error) {
-	row := q.db.QueryRow(ctx, updateTransaction, arg.ID, arg.Status, arg.TxHash)
+	row := q.db.QueryRow(ctx, updateTransaction,
+		arg.ID,
+		arg.Status,
+		arg.TxHash,
+		arg.GasPrice,
+		arg.GasLimit,
+		arg.Nonce,
+	)
 	var i Transaction
 	err := row.Scan(
 		&i.ID,
 		&i.WalletID,
 		&i.ChainID,
-		&i.FromAddress,
 		&i.ToAddress,
 		&i.Amount,
 		&i.TokenID,

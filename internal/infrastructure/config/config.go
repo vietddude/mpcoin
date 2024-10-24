@@ -15,6 +15,7 @@ type Config struct {
 	JWT      JWTConfig
 	Redis    RedisConfig
 	Ethereum EthereumConfig
+	Kafka    KafkaConfig
 }
 
 type DBConfig struct {
@@ -41,6 +42,12 @@ type RedisConfig struct {
 	DB       int    `mapstructure:"DB"`
 }
 
+type KafkaConfig struct {
+	Brokers []string `mapstructure:"BROKERS"`
+	Topic   string   `mapstructure:"TOPIC"`
+}
+
+// Define default values
 // Define default values
 var defaults = map[string]string{
 	"DB.CONN_STR":        "postgres://viet:123@localhost:5432/mpcoin?sslmode=disable",
@@ -52,6 +59,8 @@ var defaults = map[string]string{
 	"REDIS.ADDR":         "localhost:6379",
 	"REDIS.PASSWORD":     "",
 	"REDIS.DB":           "0",
+	"KAFKA.BROKERS":      "localhost:29092",
+	"KAFKA.TOPIC":        "mpc",
 	// "ETHEREUM.URL":        "https://sepolia.infura.io/v3/<INFURA_PROJECT_ID>",
 	// "ETHEREUM.SECRET_KEY": "<INFURA_SECRET_KEY>",
 }

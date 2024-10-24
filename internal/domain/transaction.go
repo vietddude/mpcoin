@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Status string
@@ -24,8 +23,8 @@ type Transaction struct {
 	ToAddress   string
 	Amount      string
 	TokenID     uuid.UUID
-	GasPrice    pgtype.Numeric
-	GasLimit    int64
+	GasPrice    string
+	GasLimit    string
 	Nonce       int64
 	Status      Status
 	TxHash      string
@@ -41,8 +40,8 @@ type CreateTransactionParams struct {
 	ToAddress   string
 	Amount      string
 	TokenID     uuid.UUID
-	GasPrice    pgtype.Numeric
-	GasLimit    int64
+	GasPrice    string
+	GasLimit    string
 	Nonce       int64
 	UnsignedTx  string
 	Status      Status
@@ -70,4 +69,9 @@ type SubmitTxnRequest struct {
 
 type SubmitTxnResponse struct {
 	TxHash string `json:"tx_hash"`
+}
+
+type TxnMessage struct {
+	ChainID uuid.UUID `json:"chain_id"`
+	TxHash  string    `json:"tx_hash"`
 }

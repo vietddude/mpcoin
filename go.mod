@@ -49,6 +49,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -56,6 +57,7 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/supranational/blst v0.3.13 // indirect
@@ -85,6 +87,7 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
+	github.com/segmentio/kafka-go v0.4.47
 	github.com/sirupsen/logrus v1.9.3
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect

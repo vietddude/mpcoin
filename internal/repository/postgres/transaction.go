@@ -31,33 +31,31 @@ func (r *transactionRepository) CreateTransaction(ctx context.Context, params do
 	err := r.WithTx(ctx, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		createdTransaction, err := q.CreateTransaction(ctx, sqlc.CreateTransactionParams{
-			ID:          pgtype.UUID{Bytes: params.ID, Valid: true},
-			WalletID:    pgtype.UUID{Bytes: params.WalletID, Valid: true},
-			ChainID:     pgtype.UUID{Bytes: params.ChainID, Valid: true},
-			FromAddress: params.FromAddress,
-			ToAddress:   params.ToAddress,
-			Amount:      params.Amount,
-			TokenID:     pgtype.UUID{Bytes: params.TokenID, Valid: true},
-			GasPrice:    params.GasPrice,
-			GasLimit:    pgtype.Int8{Int64: params.GasLimit, Valid: true},
-			Nonce:       pgtype.Int8{Int64: params.Nonce, Valid: true},
-			Status:      string(params.Status),
+			ID:        pgtype.UUID{Bytes: params.ID, Valid: true},
+			WalletID:  pgtype.UUID{Bytes: params.WalletID, Valid: true},
+			ChainID:   pgtype.UUID{Bytes: params.ChainID, Valid: true},
+			ToAddress: params.ToAddress,
+			Amount:    params.Amount,
+			TokenID:   pgtype.UUID{Bytes: params.TokenID, Valid: true},
+			GasPrice:  pgtype.Text{String: params.GasPrice, Valid: true},
+			GasLimit:  pgtype.Text{String: params.GasLimit, Valid: true},
+			Nonce:     pgtype.Int8{Int64: params.Nonce, Valid: true},
+			Status:    string(params.Status),
 		})
 		if err != nil {
 			return err
 		}
 		transaction = domain.Transaction{
-			ID:          createdTransaction.ID.Bytes,
-			WalletID:    createdTransaction.WalletID.Bytes,
-			ChainID:     createdTransaction.ChainID.Bytes,
-			FromAddress: createdTransaction.FromAddress,
-			ToAddress:   createdTransaction.ToAddress,
-			Amount:      createdTransaction.Amount,
-			TokenID:     createdTransaction.TokenID.Bytes,
-			GasPrice:    createdTransaction.GasPrice,
-			GasLimit:    createdTransaction.GasLimit.Int64,
-			Nonce:       createdTransaction.Nonce.Int64,
-			Status:      domain.Status(createdTransaction.Status),
+			ID:        createdTransaction.ID.Bytes,
+			WalletID:  createdTransaction.WalletID.Bytes,
+			ChainID:   createdTransaction.ChainID.Bytes,
+			ToAddress: createdTransaction.ToAddress,
+			Amount:    createdTransaction.Amount,
+			TokenID:   createdTransaction.TokenID.Bytes,
+			GasPrice:  createdTransaction.GasPrice.String,
+			GasLimit:  createdTransaction.GasLimit.String,
+			Nonce:     createdTransaction.Nonce.Int64,
+			Status:    domain.Status(createdTransaction.Status),
 		}
 		return nil
 	})
@@ -71,26 +69,29 @@ func (r *transactionRepository) GetTransaction(ctx context.Context, id uuid.UUID
 		return domain.Transaction{}, err
 	}
 	return domain.Transaction{
-		ID:          transaction.ID.Bytes,
-		WalletID:    transaction.WalletID.Bytes,
-		ChainID:     transaction.ChainID.Bytes,
-		FromAddress: transaction.FromAddress,
-		ToAddress:   transaction.ToAddress,
-		Amount:      transaction.Amount,
-		TokenID:     transaction.TokenID.Bytes,
-		GasPrice:    transaction.GasPrice,
-		GasLimit:    transaction.GasLimit.Int64,
-		Nonce:       transaction.Nonce.Int64,
-		Status:      domain.Status(transaction.Status),
+		ID:        transaction.ID.Bytes,
+		WalletID:  transaction.WalletID.Bytes,
+		ChainID:   transaction.ChainID.Bytes,
+		ToAddress: transaction.ToAddress,
+		Amount:    transaction.Amount,
+		TokenID:   transaction.TokenID.Bytes,
+		TxHash:    transaction.TxHash.String,
+		GasPrice:  transaction.GasPrice.String,
+		GasLimit:  transaction.GasLimit.String,
+		Nonce:     transaction.Nonce.Int64,
+		Status:    domain.Status(transaction.Status),
 	}, nil
 }
 
 func (r *transactionRepository) UpdateTransaction(ctx context.Context, transaction domain.Transaction) error {
 	q := sqlc.New(r.DB())
 	_, err := q.UpdateTransaction(ctx, sqlc.UpdateTransactionParams{
-		ID:     pgtype.UUID{Bytes: transaction.ID, Valid: true},
-		Status: string(transaction.Status),
-		TxHash: pgtype.Text{String: transaction.TxHash, Valid: transaction.TxHash != ""},
+		ID:       pgtype.UUID{Bytes: transaction.ID, Valid: true},
+		Status:   string(transaction.Status),
+		TxHash:   pgtype.Text{String: transaction.TxHash, Valid: transaction.TxHash != ""},
+		GasPrice: pgtype.Text{String: transaction.GasPrice, Valid: transaction.GasPrice != ""},
+		GasLimit: pgtype.Text{String: transaction.GasLimit, Valid: transaction.GasLimit != ""},
+		Nonce:    pgtype.Int8{Int64: transaction.Nonce, Valid: true},
 	})
 	if err != nil {
 		return err

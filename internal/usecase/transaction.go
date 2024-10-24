@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/google/uuid"
+	"github.com/segmentio/kafka-go"
 )
 
 type TxnUseCase interface {
@@ -29,14 +31,15 @@ type TxnUseCase interface {
 }
 
 type txnUseCase struct {
-	txnRepo     repository.TransactionRepository
-	ethRepo     repository.EthereumRepository
-	walletUC    WalletUseCase
-	redisClient redis.RedisClient
+	txnRepo       repository.TransactionRepository
+	ethRepo       repository.EthereumRepository
+	walletUC      WalletUseCase
+	redisClient   redis.RedisClient
+	kafkaProducer *kafka.Writer
 }
 
-func NewTxnUC(txnRepo repository.TransactionRepository, ethRepo repository.EthereumRepository, walletUC WalletUseCase, redisClient redis.RedisClient) TxnUseCase {
-	return &txnUseCase{txnRepo: txnRepo, ethRepo: ethRepo, walletUC: walletUC, redisClient: redisClient}
+func NewTxnUC(txnRepo repository.TransactionRepository, ethRepo repository.EthereumRepository, walletUC WalletUseCase, redisClient redis.RedisClient, kafkaProducer *kafka.Writer) TxnUseCase {
+	return &txnUseCase{txnRepo: txnRepo, ethRepo: ethRepo, walletUC: walletUC, redisClient: redisClient, kafkaProducer: kafkaProducer}
 }
 
 var _ TxnUseCase = (*txnUseCase)(nil)
@@ -164,6 +167,8 @@ func (uc *txnUseCase) SubmitTransaction(ctx context.Context, userId uuid.UUID, t
 		log.Printf("Failed to delete submitted transaction from Redis: %v", err)
 	}
 
+	uc.publishMessage(ctx, txnId, transaction.ChainID, txHash)
+
 	return transaction, nil
 }
 
@@ -234,4 +239,26 @@ func (uc *txnUseCase) decryptData(encryptedData string) ([]byte, error) {
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	return gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func (uc *txnUseCase) publishMessage(ctx context.Context, txnId uuid.UUID, chainID uuid.UUID, txHash common.Hash) {
+	// Prepare the message
+	message := domain.TxnMessage{
+		ChainID: chainID,
+		TxHash:  txHash.Hex(),
+	}
+
+	// Serialize the message to JSON
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Failed to marshal transaction message: %v", err)
+	}
+
+	// Publish message to Kafka
+	if err := uc.kafkaProducer.WriteMessages(ctx, kafka.Message{
+		Key:   []byte(txnId.String()),
+		Value: messageJSON,
+	}); err != nil {
+		log.Printf("Failed to publish message to Kafka: %v", err)
+	}
 }

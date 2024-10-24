@@ -208,3 +208,60 @@ func (c *EthereumClient) DecryptPrivateKey(ciphertext []byte) ([]byte, error) {
 
 	return plaintext, nil
 }
+
+func (c *EthereumClient) GetTransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	ticker := time.NewTicker(5 * time.Second) // Poll every 5 seconds
+	defer ticker.Stop()
+
+	timeout := time.After(5 * time.Minute) // Set a 5-minute timeout
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timeout:
+			return nil, fmt.Errorf("timeout waiting for transaction receipt")
+		case <-ticker.C:
+			receipt, err := c.client.TransactionReceipt(ctx, hash)
+			if err == nil {
+				return receipt, nil
+			}
+			if err != ethereum.NotFound {
+				return nil, fmt.Errorf("failed to get transaction receipt: %w", err)
+			}
+
+			// If the transaction is successful, return the receipt
+			if receipt.Status == 1 {
+				return receipt, nil
+			}
+			// If err == ethereum.NotFound, continue polling
+		}
+	}
+}
+
+func (c *EthereumClient) ParseTransactionReceipt(receipt *types.Receipt) {
+	fmt.Printf("Transaction Hash: %s\n", receipt.TxHash.Hex())
+	fmt.Printf("Status: %d\n", receipt.Status) // 1 for success, 0 for failure
+	fmt.Printf("Block Number: %d\n", receipt.BlockNumber)
+	fmt.Printf("Block Hash: %s\n", receipt.BlockHash.Hex())
+	fmt.Printf("Gas Used: %d\n", receipt.GasUsed)
+	fmt.Printf("Cumulative Gas Used: %d\n", receipt.CumulativeGasUsed)
+
+	if receipt.ContractAddress != (common.Address{}) {
+		fmt.Printf("Contract Address: %s\n", receipt.ContractAddress.Hex())
+	}
+
+	fmt.Printf("Transaction Index: %d\n", receipt.TransactionIndex)
+
+	if receipt.EffectiveGasPrice != nil {
+		fmt.Printf("Effective Gas Price: %s\n", receipt.EffectiveGasPrice.String())
+	}
+
+	fmt.Printf("Logs: %d\n", len(receipt.Logs))
+	for i, log := range receipt.Logs {
+		fmt.Printf("  Log %d:\n", i)
+		fmt.Printf("    Address: %s\n", log.Address.Hex())
+		fmt.Printf("    Topics: %v\n", log.Topics)
+		fmt.Printf("    Data: %x\n", log.Data)
+	}
+}
