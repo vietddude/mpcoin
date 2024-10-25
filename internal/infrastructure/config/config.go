@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	DB       DBConfig
-	JWT      JWTConfig
-	Redis    RedisConfig
-	Ethereum EthereumConfig
-	Kafka    KafkaConfig
+	App        AppConfig
+	DB         DBConfig
+	JWT        JWTConfig
+	Redis      RedisConfig
+	Ethereum   EthereumConfig
+	Kafka      KafkaConfig
+	MailConfig MailConfig
 }
 
 type DBConfig struct {
@@ -45,6 +46,15 @@ type RedisConfig struct {
 type KafkaConfig struct {
 	Brokers []string `mapstructure:"BROKERS"`
 	Topic   string   `mapstructure:"TOPIC"`
+}
+
+type MailConfig struct {
+	SMTPHost      string `mapstructure:"SMTP_HOST"`
+	SMTPPort      int    `mapstructure:"SMTP_PORT"`
+	SMTPUsername  string `mapstructure:"SMTP_USERNAME"`
+	SMTPPassword  string `mapstructure:"SMTP_PASSWORD"`
+	FromEmail     string `mapstructure:"FROM_EMAIL"`
+	OTPExpiration int    `mapstructure:"OTP_EXPIRATION"`
 }
 
 // Define default values

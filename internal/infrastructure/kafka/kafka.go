@@ -13,8 +13,31 @@ import (
 type Writer = kafka.Writer
 type Reader = kafka.Reader
 
-func NewKafkaProducer(cfg *config.Config) (*Writer, error) {
-	err := createTopicIfNotExists(cfg.Kafka.Brokers, cfg.Kafka.Topic)
+type kafkaOptions struct {
+	Topic string
+}
+
+type KafkaOption func(*kafkaOptions)
+
+func defaultKafkaOptions(cfg *config.Config) kafkaOptions {
+	return kafkaOptions{
+		Topic: cfg.Kafka.Topic,
+	}
+}
+
+func WithTopic(topic string) KafkaOption {
+	return func(o *kafkaOptions) {
+		o.Topic = topic
+	}
+}
+
+func NewKafkaProducer(cfg *config.Config, opts ...KafkaOption) (*Writer, error) {
+	options := defaultKafkaOptions(cfg)
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	err := createTopicIfNotExists(cfg.Kafka.Brokers, options.Topic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topic: %w", err)
 	}
@@ -26,10 +49,22 @@ func NewKafkaProducer(cfg *config.Config) (*Writer, error) {
 	return producer, nil
 }
 
-func NewKafkaConsumer(cfg *config.Config) (*kafka.Reader, error) {
+func NewKafkaConsumer(cfg *config.Config, opts ...KafkaOption) (*kafka.Reader, error) {
+	options := defaultKafkaOptions(cfg)
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	if options.Topic != cfg.Kafka.Topic {
+		err := createTopicIfNotExists(cfg.Kafka.Brokers, options.Topic)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create topic: %w", err)
+		}
+	}
+
 	consumer := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: cfg.Kafka.Brokers,
-		Topic:   cfg.Kafka.Topic,
+		Topic:   options.Topic,
 	})
 	return consumer, nil
 }
