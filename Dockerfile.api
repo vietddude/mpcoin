@@ -22,7 +22,7 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/bin/api .
-COPY .env .env
+# COPY .env .env
 
 EXPOSE 8080
 

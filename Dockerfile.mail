@@ -21,6 +21,6 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /app/bin/mailworker .
-COPY .env.example .env
+# COPY .env.example .env
 
 CMD ["./mailworker"]
