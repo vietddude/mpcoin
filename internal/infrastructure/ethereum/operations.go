@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"time"
 
+	"mpc/internal/infrastructure/config"
 	"mpc/internal/repository"
 
 	"github.com/ethereum/go-ethereum"
@@ -29,13 +30,13 @@ type EthereumClient struct {
 	secretKey string
 }
 
-func NewEthereumClient(url, secretKey string) (*EthereumClient, error) {
-	client, err := ethclient.Dial(url)
+func NewEthereumClient(cfg *config.EthereumConfig) (*EthereumClient, error) {
+	client, err := ethclient.Dial(cfg.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Ethereum client: %w", err)
 	}
 
-	return &EthereumClient{client: client, secretKey: secretKey}, nil
+	return &EthereumClient{client: client, secretKey: cfg.SecretKey}, nil
 }
 
 // Ensure EthereumClient implements EthereumRepository

@@ -38,25 +38,25 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	dbPool, err := db.InitDB(cfg)
+	dbPool, err := db.InitDB(&cfg.DB)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.CloseDB()
 
-	ethClient, err := ethereum.NewEthereumClient(cfg.Ethereum.URL, cfg.Ethereum.SecretKey)
+	ethClient, err := ethereum.NewEthereumClient(&cfg.Ethereum)
 	if err != nil {
 		log.Fatalf("Failed to initialize Ethereum client: %v", err)
 	}
 
 	// kafka
-	producer, err := kafka.NewKafkaProducer(cfg)
+	producer, err := kafka.NewKafkaProducer(&cfg.Kafka)
 	if err != nil {
 		log.Fatalf("Failed to initialize Kafka producer: %v", err)
 	}
 	defer producer.Close()
 
-	consumer, err := kafka.NewKafkaConsumer(cfg)
+	consumer, err := kafka.NewKafkaConsumer(&cfg.Kafka)
 	if err != nil {
 		log.Fatalf("Failed to initialize Kafka consumer: %v", err)
 	}

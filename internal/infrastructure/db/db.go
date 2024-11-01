@@ -15,10 +15,10 @@ var (
 )
 
 // InitDB initializes the database connection pool
-func InitDB(cfg *config.Config) (*pgxpool.Pool, error) {
+func InitDB(cfg *config.DBConfig) (*pgxpool.Pool, error) {
 	var err error
 	once.Do(func() {
-		dbPool, err = pgxpool.New(context.Background(), cfg.DB.ConnStr)
+		dbPool, err = pgxpool.New(context.Background(), cfg.ConnStr)
 		if err != nil {
 			log.Printf("Unable to create connection pool: %v\n", err)
 		}

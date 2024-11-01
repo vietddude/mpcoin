@@ -12,9 +12,11 @@ type RedisClient struct {
 	client *redis.Client
 }
 
-func NewRedisClient(cfg config.RedisConfig) (*RedisClient, error) {
+func NewRedisClient(cfg *config.RedisConfig) (*RedisClient, error) {
+	
 	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
+		Addr:     cfg.Address,
+		Username: cfg.Username,
 		Password: cfg.Password,
 		DB:       cfg.DB,
 	})

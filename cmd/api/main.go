@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	_ "mpc/docs"
 	"mpc/internal/delivery/http"
 	_ "mpc/internal/domain"
@@ -25,6 +24,8 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	// logger
+	log := logger.NewLogger()
 
 	// config
 	cfg, err := config.Load()
@@ -33,35 +34,32 @@ func main() {
 	}
 
 	// db
-	dbPool, err := db.InitDB(cfg)
+	dbPool, err := db.InitDB(&cfg.DB)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.CloseDB()
 
 	// redis
-	redisClient, err := redis.NewRedisClient(cfg.Redis)
+	redisClient, err := redis.NewRedisClient(&cfg.Redis)
 	if err != nil {
 		log.Fatalf("Failed to initialize Redis client: %v", err)
 	}
 	defer redisClient.Close()
 
 	// kafka
-	kafkaProducer, err := kafka.NewKafkaProducer(cfg)
+	kafkaProducer, err := kafka.NewKafkaProducer(&cfg.Kafka)
 	if err != nil {
 		log.Fatalf("Failed to initialize Kafka producer: %v", err)
 	}
 	defer kafkaProducer.Close()
 
-	// logger
-	log := logger.NewLogger()
-
 	// jwt
-	jwtConfig := auth.NewJWTConfig(cfg.JWT.SecretKey, cfg.JWT.TokenDuration, cfg.JWT.TokenDuration*30)
+	jwtConfig := auth.NewJWTConfig(&cfg.JWT)
 	jwtService := auth.NewJWTService(jwtConfig, *redisClient)
 
 	// ethereum
-	ethClient, err := ethereum.NewEthereumClient(cfg.Ethereum.URL, cfg.Ethereum.SecretKey)
+	ethClient, err := ethereum.NewEthereumClient(&cfg.Ethereum)
 	if err != nil {
 		log.Fatalf("Failed to initialize Ethereum client: %v", err)
 	}

@@ -1,0 +1,29 @@
+# Build stage
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache make
+
+WORKDIR /app
+
+COPY Makefile ./
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN make build-api
+
+# Final stage
+FROM alpine:latest
+
+WORKDIR /app
+
+# Add necessary runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /app/bin/api .
+COPY .env .env
+
+EXPOSE 8080
+
+CMD ["./api"]

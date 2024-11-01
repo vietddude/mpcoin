@@ -1,27 +1,98 @@
-version: "3.8"
-
 services:
-  app:
-    build: .
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     depends_on:
-      - db
+      - postgres
+      - redis
+      - kafka
     environment:
-      - DB_HOST=db
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=myapp
-      - DB_PORT=5432
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - KAFKA_BROKERS=kafka:29092
+    restart: unless-stopped
 
-  db:
-    image: postgres:13
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - postgres
+      - kafka
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=myapp
+      - DB_HOST=postgres
+      - KAFKA_BROKERS=kafka:29092
+    restart: unless-stopped
+
+  # mailworker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.mail
+  #   depends_on:
+  #     - redis
+  #     - kafka
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - KAFKA_BROKERS=kafka:29092
+  #   restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=${DB_USER:-mpc}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-123}
+      - POSTGRES_DB=${DB_NAME:-mpc}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-mpc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:

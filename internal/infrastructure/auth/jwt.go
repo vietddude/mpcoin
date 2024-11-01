@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"mpc/internal/infrastructure/config"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -26,10 +27,10 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-func NewJWTConfig(secretKey string, accessTokenDuration, refreshTokenDuration time.Duration) *JWTConfig {
+func NewJWTConfig(cfg *config.JWTConfig) *JWTConfig {
 	return &JWTConfig{
-		SecretKey:            secretKey,
-		AccessTokenDuration:  accessTokenDuration,
-		RefreshTokenDuration: refreshTokenDuration,
+		SecretKey:            cfg.SecretKey,
+		AccessTokenDuration:  cfg.TokenDuration,
+		RefreshTokenDuration: cfg.TokenDuration * 30,
 	}
 }
