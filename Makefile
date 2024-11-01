@@ -1,5 +1,5 @@
 # Load environment variables from .env file
-include .env
+-include .env
 export
 
 # Go commands
