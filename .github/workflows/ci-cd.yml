@@ -43,7 +43,7 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    
+
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@master
@@ -54,14 +54,14 @@ jobs:
           script: |
             # Pull the latest image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
-            
+
             # Stop and remove the existing container (if it exists)
             docker stop api-container || true
             docker rm api-container || true
-            
+
             # Run the new container
             docker run -d \
               --name api-container \
               --restart unless-stopped \
-              -p ${{ env.PORT }}:${{ env.PORT }} \
+              -p ${{ vars.PORT }}:${{ vars.PORT }} \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
