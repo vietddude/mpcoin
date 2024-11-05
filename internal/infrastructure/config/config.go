@@ -65,13 +65,11 @@ func Load() (*Config, error) {
 	// Try to load .env file (optional)
 	viper.SetConfigFile(".env")
 	if err := viper.ReadInConfig(); err != nil {
-		// Ignore file not found error
+		// Ignore file not found error and continue
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			// Only return error if it's not a "file not found" error
-			return nil, fmt.Errorf("error reading config file: %w", err)
+			// Only log a warning for missing .env file
+			log.Printf("Warning: .env file not found, using environment variables")
 		}
-		// Log that we're using environment variables instead
-		log.Println("No .env file found, using environment variables")
 	}
 
 	var config Config
