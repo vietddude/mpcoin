@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
 
@@ -60,50 +59,31 @@ type MailConfig struct {
 }
 
 func Load() (*Config, error) {
-	var result map[string]interface{}
-	var config Config
-
-	// Load environment variables from .env file
-	viper.SetConfigFile(".env")
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Error reading config file: %v", err)
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
-		}
-	}
-
-	// Load environment variables from system
+	// Enable reading from environment variables first
 	viper.AutomaticEnv()
 
-	// First unmarshal into a map
-	if err := viper.Unmarshal(&result); err != nil {
-		return nil, fmt.Errorf("unable to decode into map: %w", err)
+	// Try to load .env file (optional)
+	viper.SetConfigFile(".env")
+	if err := viper.ReadInConfig(); err != nil {
+		// Ignore file not found error
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Only return error if it's not a "file not found" error
+			return nil, fmt.Errorf("error reading config file: %w", err)
+		}
+		// Log that we're using environment variables instead
+		log.Println("No .env file found, using environment variables")
 	}
 
-	// Then decode map into the struct using mapstructure
-	decoderConfig := &mapstructure.DecoderConfig{
-		WeaklyTypedInput: true,
-		Result:           &config,
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("unable to decode into struct: %w", err)
 	}
 
-	decoder, err := mapstructure.NewDecoder(decoderConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error creating decoder: %w", err)
-	}
-
-	if err := decoder.Decode(result); err != nil {
-		return nil, fmt.Errorf("error decoding config: %w", err)
-	}
-
-	// Handle Kafka brokers separately if needed
+	// Handle Kafka brokers special case
 	brokersStr := viper.GetString("KAFKA_BROKERS")
-	if brokersStr != "" && len(config.Kafka.Brokers) == 0 {
+	if brokersStr != "" {
 		config.Kafka.Brokers = strings.Split(brokersStr, ",")
 	}
-
-	// Debug: Print final config
-	// log.Printf("Loaded config: %+v", config)
 
 	return &config, nil
 }
