@@ -6,6 +6,7 @@ import (
 	"mpc/internal/infrastructure/config"
 	"net"
 	"strconv"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -36,11 +37,13 @@ func NewKafkaProducer(cfg *config.KafkaConfig, opts ...KafkaOption) (*Writer, er
 	for _, opt := range opts {
 		opt(&options)
 	}
+	fmt.Print("Run into this")
 
 	err := createTopicIfNotExists(cfg.Brokers, options.Topic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create topic: %w", err)
 	}
+	fmt.Print("Run into this 2")
 	producer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:  cfg.Brokers,
 		Topic:    options.Topic,
@@ -87,19 +90,32 @@ func CloseKafkaConnections(producer *kafka.Writer, consumers ...*kafka.Reader) e
 }
 
 func createTopicIfNotExists(brokers []string, topic string) error {
-	conn, err := kafka.Dial("tcp", brokers[0])
+	// Add timeout for initial connection
+	dialer := &kafka.Dialer{
+		Timeout:   10 * time.Second,
+		DualStack: true,
+	}
+
+	// Connect to the first broker
+	conn, err := dialer.Dial("tcp", brokers[0])
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to Kafka broker %s: %w", brokers[0], err)
 	}
 	defer conn.Close()
 
+	// Add timeout for controller request
+	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	controller, err := conn.Controller()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get Kafka controller: %w", err)
 	}
-	controllerConn, err := kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+
+	controllerAddr := net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port))
+	controllerConn, err := dialer.Dial("tcp", controllerAddr)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to Kafka controller at %s: %w", controllerAddr, err)
 	}
 	defer controllerConn.Close()
 
@@ -111,12 +127,13 @@ func createTopicIfNotExists(brokers []string, topic string) error {
 		},
 	}
 
+	// Add timeout for create topics request
 	err = controllerConn.CreateTopics(topicConfigs...)
 	if err != nil {
-		// If the topic already exists, it's not an error
-		if err != kafka.TopicAlreadyExists {
-			return err
+		if err == kafka.TopicAlreadyExists {
+			return nil // Topic exists, not an error
 		}
+		return fmt.Errorf("failed to create topic %s: %w", topic, err)
 	}
 
 	return nil

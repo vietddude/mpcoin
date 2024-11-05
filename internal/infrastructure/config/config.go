@@ -63,8 +63,8 @@ func Load() (*Config, error) {
 	var result map[string]interface{}
 	var config Config
 
+	// Load environment variables from .env file
 	viper.SetConfigFile(".env")
-	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Printf("Error reading config file: %v", err)
@@ -72,6 +72,9 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}
 	}
+
+	// Load environment variables from system
+	viper.AutomaticEnv()
 
 	// First unmarshal into a map
 	if err := viper.Unmarshal(&result); err != nil {
@@ -100,7 +103,7 @@ func Load() (*Config, error) {
 	}
 
 	// Debug: Print final config
-	log.Printf("Loaded config: %+v", config)
+	// log.Printf("Loaded config: %+v", config)
 
 	return &config, nil
 }
