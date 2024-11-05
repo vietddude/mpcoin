@@ -47,15 +47,54 @@ jobs:
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@master
-        env:
-          HOST: ${{ secrets.SERVER_HOST }}
-          USERNAME: ${{ secrets.SERVER_USERNAME }}
-          KEY: ${{ secrets.SERVER_SSH_KEY }}
         with:
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
-          key: ${{ env.KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script: |
             echo "Connected successfully!"
+
+            # Login to GitHub Container Registry
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            # Pull the latest image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
+
+            # Stop and remove existing container
+            docker stop api-container || true
+            docker rm api-container || true
+
+            # Run new container with environment variables
+            docker run -d \
+              --name api-container \
+              --restart unless-stopped \
+              --network app-network \
+              -p ${{ vars.PORT }}:${{ vars.PORT }} \
+              -e ENV="${{ vars.ENV }}" \
+              -e PORT="${{ vars.PORT }}" \
+              -e GOOSE_DRIVER="${{ vars.GOOSE_DRIVER }}" \
+              -e GOOSE_DBSTRING="${{ secrets.GOOSE_DBSTRING }}" \
+              -e CONN_STR="${{ secrets.CONN_STR }}" \
+              -e MAX_CONNECTIONS="${{ vars.MAX_CONNECTIONS }}" \
+              -e JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}" \
+              -e JWT_TOKEN_DURATION="${{ vars.JWT_TOKEN_DURATION }}" \
+              -e ETHEREUM_URL="${{ vars.ETHEREUM_URL }}" \
+              -e ETHEREUM_SECRET_KEY="${{ secrets.ETHEREUM_SECRET_KEY }}" \
+              -e REDIS_ADDR="${{ vars.REDIS_ADDR }}" \
+              -e REDIS_USERNAME="${{ secrets.REDIS_USERNAME }}" \
+              -e REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
+              -e REDIS_DB="${{ vars.REDIS_DB }}" \
+              -e KAFKA_BROKERS="${{ vars.KAFKA_BROKERS }}" \
+              -e KAFKA_TOPIC="${{ vars.KAFKA_TOPIC }}" \
+              -e SMTP_HOST="${{ secrets.SMTP_HOST }}" \
+              -e SMTP_PORT="${{ vars.SMTP_PORT }}" \
+              -e SMTP_USERNAME="${{ secrets.SMTP_USERNAME }}" \
+              -e SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}" \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
+
+            # Clean up old images
+            docker image prune -f
+
+            # Verify container is running
+            docker ps | grep api-container
