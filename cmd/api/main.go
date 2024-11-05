@@ -28,10 +28,11 @@ func main() {
 	log := logger.NewLogger()
 
 	// config
-	cfg, err := config.Load()
+	cfg, err := config.Load(log)
 	if err != nil {
 		log.Printf("Failed to load config: %v", err)
 	}
+	log.Printf("Config loaded: %+v", cfg)
 
 	// db
 	dbPool, err := db.InitDB(&cfg.DB)

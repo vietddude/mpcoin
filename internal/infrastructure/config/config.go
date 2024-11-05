@@ -2,10 +2,10 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -58,7 +58,7 @@ type MailConfig struct {
 	OTPExpiration int    `mapstructure:"OTP_EXPIRATION"`
 }
 
-func Load() (*Config, error) {
+func Load(log *logrus.Logger) (*Config, error) {
 	// Enable reading from environment variables first
 	viper.AutomaticEnv()
 
@@ -68,7 +68,7 @@ func Load() (*Config, error) {
 		// Ignore file not found error and continue
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			// Only log a warning for missing .env file
-			log.Printf("Warning: .env file not found, using environment variables")
+			log.Debug("Warning: .env file not found, using environment variables")
 		}
 	}
 
