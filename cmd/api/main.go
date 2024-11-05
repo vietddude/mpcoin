@@ -30,7 +30,7 @@ func main() {
 	// config
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Printf("Failed to load config: %v", err)
 	}
 
 	// db
