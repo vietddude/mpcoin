@@ -29,6 +29,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
@@ -38,6 +41,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build-and-push
@@ -45,6 +50,31 @@ jobs:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
 
     steps:
+      - name: Create env file
+        run: |
+          cat << EOF > .env
+          ENV=${{ vars.ENV }}
+          PORT=${{ vars.PORT }}
+          GOOSE_DRIVER=${{ vars.GOOSE_DRIVER }}
+          GOOSE_DBSTRING=${{ secrets.GOOSE_DBSTRING }}
+          CONN_STR=${{ secrets.CONN_STR }}
+          MAX_CONNECTIONS=${{ vars.MAX_CONNECTIONS }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          JWT_TOKEN_DURATION=${{ vars.JWT_TOKEN_DURATION }}
+          ETHEREUM_URL=${{ vars.ETHEREUM_URL }}
+          ETHEREUM_SECRET_KEY=${{ secrets.ETHEREUM_SECRET_KEY }}
+          REDIS_ADDR=${{ vars.REDIS_ADDR }}
+          REDIS_USERNAME=${{ secrets.REDIS_USERNAME }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          REDIS_DB=${{ vars.REDIS_DB }}
+          KAFKA_BROKERS=${{ vars.KAFKA_BROKERS }}
+          KAFKA_TOPIC=${{ vars.KAFKA_TOPIC }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ vars.SMTP_PORT }}
+          SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+          EOF
+
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         with:
@@ -53,8 +83,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script: |
-            echo "Connected successfully!"
-
             # Login to GitHub Container Registry
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
@@ -65,32 +93,13 @@ jobs:
             docker stop api-container || true
             docker rm api-container || true
 
-            # Run new container with environment variables
+            # Run new container with environment variables from file
             docker run -d \
               --name api-container \
               --restart unless-stopped \
               --network app-network \
               -p ${{ vars.PORT }}:${{ vars.PORT }} \
-              -e ENV="${{ vars.ENV }}" \
-              -e PORT="${{ vars.PORT }}" \
-              -e GOOSE_DRIVER="${{ vars.GOOSE_DRIVER }}" \
-              -e GOOSE_DBSTRING="${{ secrets.GOOSE_DBSTRING }}" \
-              -e CONN_STR="${{ secrets.CONN_STR }}" \
-              -e MAX_CONNECTIONS="${{ vars.MAX_CONNECTIONS }}" \
-              -e JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}" \
-              -e JWT_TOKEN_DURATION="${{ vars.JWT_TOKEN_DURATION }}" \
-              -e ETHEREUM_URL="${{ vars.ETHEREUM_URL }}" \
-              -e ETHEREUM_SECRET_KEY="${{ secrets.ETHEREUM_SECRET_KEY }}" \
-              -e REDIS_ADDR="${{ vars.REDIS_ADDR }}" \
-              -e REDIS_USERNAME="${{ secrets.REDIS_USERNAME }}" \
-              -e REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
-              -e REDIS_DB="${{ vars.REDIS_DB }}" \
-              -e KAFKA_BROKERS="${{ vars.KAFKA_BROKERS }}" \
-              -e KAFKA_TOPIC="${{ vars.KAFKA_TOPIC }}" \
-              -e SMTP_HOST="${{ secrets.SMTP_HOST }}" \
-              -e SMTP_PORT="${{ vars.SMTP_PORT }}" \
-              -e SMTP_USERNAME="${{ secrets.SMTP_USERNAME }}" \
-              -e SMTP_PASSWORD="${{ secrets.SMTP_PASSWORD }}" \
+              --env-file .env \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
 
             # Clean up old images
