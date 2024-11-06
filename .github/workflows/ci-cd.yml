@@ -48,85 +48,65 @@ jobs:
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         env:
-          ENV: ${{ vars.ENV }}
-          PORT: ${{ vars.PORT }}
-          GOOSE_DRIVER: ${{ vars.GOOSE_DRIVER }}
-          GOOSE_DBSTRING: ${{ secrets.GOOSE_DBSTRING }}
-          CONN_STR: ${{ secrets.CONN_STR }}
-          MAX_CONNECTIONS: ${{ vars.MAX_CONNECTIONS }}
-          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-          JWT_TOKEN_DURATION: ${{ vars.JWT_TOKEN_DURATION }}
-          ETHEREUM_URL: ${{ vars.ETHEREUM_URL }}
-          ETHEREUM_SECRET_KEY: ${{ secrets.ETHEREUM_SECRET_KEY }}
-          REDIS_ADDR: ${{ vars.REDIS_ADDR }}
-          REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
-          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-          REDIS_DB: ${{ vars.REDIS_DB }}
-          KAFKA_BROKERS: ${{ vars.KAFKA_BROKERS }}
-          KAFKA_TOPIC: ${{ vars.KAFKA_TOPIC }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ vars.SMTP_PORT }}
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DEPLOY_ENV: ${{ vars.ENV }}
+          DEPLOY_PORT: ${{ vars.PORT }}
+          DEPLOY_GOOSE_DRIVER: ${{ vars.GOOSE_DRIVER }}
+          DEPLOY_GOOSE_DBSTRING: ${{ secrets.GOOSE_DBSTRING }}
+          DEPLOY_CONN_STR: ${{ secrets.CONN_STR }}
+          DEPLOY_MAX_CONNECTIONS: ${{ vars.MAX_CONNECTIONS }}
+          DEPLOY_JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          DEPLOY_JWT_TOKEN_DURATION: ${{ vars.JWT_TOKEN_DURATION }}
+          DEPLOY_ETHEREUM_URL: ${{ vars.ETHEREUM_URL }}
+          DEPLOY_ETHEREUM_SECRET_KEY: ${{ secrets.ETHEREUM_SECRET_KEY }}
+          DEPLOY_REDIS_ADDR: ${{ vars.REDIS_ADDR }}
+          DEPLOY_REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
+          DEPLOY_REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DEPLOY_REDIS_DB: ${{ vars.REDIS_DB }}
+          DEPLOY_KAFKA_BROKERS: ${{ vars.KAFKA_BROKERS }}
+          DEPLOY_KAFKA_TOPIC: ${{ vars.KAFKA_TOPIC }}
+          DEPLOY_SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          DEPLOY_SMTP_PORT: ${{ vars.SMTP_PORT }}
+          DEPLOY_SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          DEPLOY_SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DEPLOY_REGISTRY: ${{ env.REGISTRY }}
+          DEPLOY_IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          DEPLOY_VERSION: ${{ env.VERSION }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
-          envs: |
-            ENV
-            PORT
-            GOOSE_DRIVER
-            GOOSE_DBSTRING
-            CONN_STR
-            MAX_CONNECTIONS
-            JWT_SECRET_KEY
-            JWT_TOKEN_DURATION
-            ETHEREUM_URL
-            ETHEREUM_SECRET_KEY
-            REDIS_ADDR
-            REDIS_USERNAME
-            REDIS_PASSWORD
-            REDIS_DB
-            KAFKA_BROKERS
-            KAFKA_TOPIC
-            SMTP_HOST
-            SMTP_PORT
-            SMTP_USERNAME
-            SMTP_PASSWORD
-            REGISTRY
-            IMAGE_NAME
-            VERSION
+          envs: DEPLOY_ENV,DEPLOY_PORT,DEPLOY_GOOSE_DRIVER,DEPLOY_GOOSE_DBSTRING,DEPLOY_CONN_STR,DEPLOY_MAX_CONNECTIONS,DEPLOY_JWT_SECRET_KEY,DEPLOY_JWT_TOKEN_DURATION,DEPLOY_ETHEREUM_URL,DEPLOY_ETHEREUM_SECRET_KEY,DEPLOY_REDIS_ADDR,DEPLOY_REDIS_USERNAME,DEPLOY_REDIS_PASSWORD,DEPLOY_REDIS_DB,DEPLOY_KAFKA_BROKERS,DEPLOY_KAFKA_TOPIC,DEPLOY_SMTP_HOST,DEPLOY_SMTP_PORT,DEPLOY_SMTP_USERNAME,DEPLOY_SMTP_PASSWORD,DEPLOY_REGISTRY,DEPLOY_IMAGE_NAME,DEPLOY_VERSION
           script: |
             # Create .env file on the server
-            cat << 'EOF' > .env
-            ENV=${ENV}
-            PORT=${PORT}
-            GOOSE_DRIVER=${GOOSE_DRIVER}
-            GOOSE_DBSTRING=${GOOSE_DBSTRING}
-            CONN_STR=${CONN_STR}
-            MAX_CONNECTIONS=${MAX_CONNECTIONS}
-            JWT_SECRET_KEY=${JWT_SECRET_KEY}
-            JWT_TOKEN_DURATION=${JWT_TOKEN_DURATION}
-            ETHEREUM_URL=${ETHEREUM_URL}
-            ETHEREUM_SECRET_KEY=${ETHEREUM_SECRET_KEY}
-            REDIS_ADDR=${REDIS_ADDR}
-            REDIS_USERNAME=${REDIS_USERNAME}
-            REDIS_PASSWORD=${REDIS_PASSWORD}
-            REDIS_DB=${REDIS_DB}
-            KAFKA_BROKERS=${KAFKA_BROKERS}
-            KAFKA_TOPIC=${KAFKA_TOPIC}
-            SMTP_HOST=${SMTP_HOST}
-            SMTP_PORT=${SMTP_PORT}
-            SMTP_USERNAME=${SMTP_USERNAME}
-            SMTP_PASSWORD=${SMTP_PASSWORD}
+            cat << EOF > .env
+            ENV=${DEPLOY_ENV}
+            PORT=${DEPLOY_PORT}
+            GOOSE_DRIVER=${DEPLOY_GOOSE_DRIVER}
+            GOOSE_DBSTRING=${DEPLOY_GOOSE_DBSTRING}
+            CONN_STR=${DEPLOY_CONN_STR}
+            MAX_CONNECTIONS=${DEPLOY_MAX_CONNECTIONS}
+            JWT_SECRET_KEY=${DEPLOY_JWT_SECRET_KEY}
+            JWT_TOKEN_DURATION=${DEPLOY_JWT_TOKEN_DURATION}
+            ETHEREUM_URL=${DEPLOY_ETHEREUM_URL}
+            ETHEREUM_SECRET_KEY=${DEPLOY_ETHEREUM_SECRET_KEY}
+            REDIS_ADDR=${DEPLOY_REDIS_ADDR}
+            REDIS_USERNAME=${DEPLOY_REDIS_USERNAME}
+            REDIS_PASSWORD=${DEPLOY_REDIS_PASSWORD}
+            REDIS_DB=${DEPLOY_REDIS_DB}
+            KAFKA_BROKERS=${DEPLOY_KAFKA_BROKERS}
+            KAFKA_TOPIC=${DEPLOY_KAFKA_TOPIC}
+            SMTP_HOST=${DEPLOY_SMTP_HOST}
+            SMTP_PORT=${DEPLOY_SMTP_PORT}
+            SMTP_USERNAME=${DEPLOY_SMTP_USERNAME}
+            SMTP_PASSWORD=${DEPLOY_SMTP_PASSWORD}
             EOF
             
             # Login to GitHub Container Registry
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ${REGISTRY} -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${DEPLOY_REGISTRY} -u ${{ github.actor }} --password-stdin
             
             # Pull the latest image
-            docker pull ${REGISTRY}/${IMAGE_NAME}-api:${VERSION}
+            docker pull ${DEPLOY_REGISTRY}/${DEPLOY_IMAGE_NAME}-api:${DEPLOY_VERSION}
             
             # Stop and remove existing container
             docker stop api-container || true
@@ -137,9 +117,9 @@ jobs:
               --name api-container \
               --restart unless-stopped \
               --network app-network \
-              -p ${PORT}:${PORT} \
+              -p "${DEPLOY_PORT}:${DEPLOY_PORT}" \
               --env-file .env \
-              ${REGISTRY}/${IMAGE_NAME}-api:${VERSION}
+              ${DEPLOY_REGISTRY}/${DEPLOY_IMAGE_NAME}-api:${DEPLOY_VERSION}
             
             # Clean up old images
             docker image prune -f
