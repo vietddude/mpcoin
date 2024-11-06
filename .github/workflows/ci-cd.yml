@@ -47,6 +47,27 @@ jobs:
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@master
+        env:
+          ENV: ${{ vars.ENV }}
+          PORT: ${{ vars.PORT }}
+          GOOSE_DRIVER: ${{ vars.GOOSE_DRIVER }}
+          GOOSE_DBSTRING: ${{ secrets.GOOSE_DBSTRING }}
+          CONN_STR: ${{ secrets.CONN_STR }}
+          MAX_CONNECTIONS: ${{ vars.MAX_CONNECTIONS }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_TOKEN_DURATION: ${{ vars.JWT_TOKEN_DURATION }}
+          ETHEREUM_URL: ${{ vars.ETHEREUM_URL }}
+          ETHEREUM_SECRET_KEY: ${{ secrets.ETHEREUM_SECRET_KEY }}
+          REDIS_ADDR: ${{ vars.REDIS_ADDR }}
+          REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_DB: ${{ vars.REDIS_DB }}
+          KAFKA_BROKERS: ${{ vars.KAFKA_BROKERS }}
+          KAFKA_TOPIC: ${{ vars.KAFKA_TOPIC }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
@@ -76,27 +97,6 @@ jobs:
             REGISTRY
             IMAGE_NAME
             VERSION
-          environment:
-            ENV: ${{ vars.ENV }}
-            PORT: ${{ vars.PORT }}
-            GOOSE_DRIVER: ${{ vars.GOOSE_DRIVER }}
-            GOOSE_DBSTRING: ${{ secrets.GOOSE_DBSTRING }}
-            CONN_STR: ${{ secrets.CONN_STR }}
-            MAX_CONNECTIONS: ${{ vars.MAX_CONNECTIONS }}
-            JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-            JWT_TOKEN_DURATION: ${{ vars.JWT_TOKEN_DURATION }}
-            ETHEREUM_URL: ${{ vars.ETHEREUM_URL }}
-            ETHEREUM_SECRET_KEY: ${{ secrets.ETHEREUM_SECRET_KEY }}
-            REDIS_ADDR: ${{ vars.REDIS_ADDR }}
-            REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
-            REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-            REDIS_DB: ${{ vars.REDIS_DB }}
-            KAFKA_BROKERS: ${{ vars.KAFKA_BROKERS }}
-            KAFKA_TOPIC: ${{ vars.KAFKA_TOPIC }}
-            SMTP_HOST: ${{ secrets.SMTP_HOST }}
-            SMTP_PORT: ${{ vars.SMTP_PORT }}
-            SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-            SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           script: |
             # Create .env file on the server
             cat << 'EOF' > .env
