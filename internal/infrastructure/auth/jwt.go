@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"mpc/internal/infrastructure/config"
 	"time"
 
@@ -28,9 +29,13 @@ type JWTClaims struct {
 }
 
 func NewJWTConfig(cfg *config.JWTConfig) *JWTConfig {
+	duration, err := time.ParseDuration(cfg.TokenDuration)
+	if err != nil {
+		log.Fatalf("Failed to parse token duration: %v", err)
+	}
 	return &JWTConfig{
 		SecretKey:            cfg.SecretKey,
-		AccessTokenDuration:  cfg.TokenDuration,
-		RefreshTokenDuration: cfg.TokenDuration * 30,
+		AccessTokenDuration:  duration,
+		RefreshTokenDuration: duration * 30,
 	}
 }
