@@ -18,17 +18,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
@@ -43,7 +43,7 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    
+
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@master
@@ -78,51 +78,54 @@ jobs:
           port: 22
           envs: DEPLOY_ENV,DEPLOY_PORT,DEPLOY_GOOSE_DRIVER,DEPLOY_GOOSE_DBSTRING,DEPLOY_CONN_STR,DEPLOY_MAX_CONNECTIONS,DEPLOY_JWT_SECRET_KEY,DEPLOY_JWT_TOKEN_DURATION,DEPLOY_ETHEREUM_URL,DEPLOY_ETHEREUM_SECRET_KEY,DEPLOY_REDIS_ADDR,DEPLOY_REDIS_USERNAME,DEPLOY_REDIS_PASSWORD,DEPLOY_REDIS_DB,DEPLOY_KAFKA_BROKERS,DEPLOY_KAFKA_TOPIC,DEPLOY_SMTP_HOST,DEPLOY_SMTP_PORT,DEPLOY_SMTP_USERNAME,DEPLOY_SMTP_PASSWORD,DEPLOY_REGISTRY,DEPLOY_IMAGE_NAME,DEPLOY_VERSION
           script: |
-            # Create .env file on the server
-            cat << EOF > .env
-            ENV=${DEPLOY_ENV}
-            PORT=${DEPLOY_PORT}
-            GOOSE_DRIVER=${DEPLOY_GOOSE_DRIVER}
-            GOOSE_DBSTRING=${DEPLOY_GOOSE_DBSTRING}
-            CONN_STR=${DEPLOY_CONN_STR}
-            MAX_CONNECTIONS=${DEPLOY_MAX_CONNECTIONS}
-            JWT_SECRET_KEY=${DEPLOY_JWT_SECRET_KEY}
-            JWT_TOKEN_DURATION=${DEPLOY_JWT_TOKEN_DURATION}
-            ETHEREUM_URL=${DEPLOY_ETHEREUM_URL}
-            ETHEREUM_SECRET_KEY=${DEPLOY_ETHEREUM_SECRET_KEY}
-            REDIS_ADDR=${DEPLOY_REDIS_ADDR}
-            REDIS_USERNAME=${DEPLOY_REDIS_USERNAME}
-            REDIS_PASSWORD=${DEPLOY_REDIS_PASSWORD}
-            REDIS_DB=${DEPLOY_REDIS_DB}
-            KAFKA_BROKERS=${DEPLOY_KAFKA_BROKERS}
-            KAFKA_TOPIC=${DEPLOY_KAFKA_TOPIC}
-            SMTP_HOST=${DEPLOY_SMTP_HOST}
-            SMTP_PORT=${DEPLOY_SMTP_PORT}
-            SMTP_USERNAME=${DEPLOY_SMTP_USERNAME}
-            SMTP_PASSWORD=${DEPLOY_SMTP_PASSWORD}
+            # Debug: Print working directory
+            pwd
+
+            # Create .env file with absolute path
+            cat << EOF > /home/${{ secrets.SERVER_USERNAME }}/.env
+            ENV=${{ vars.ENV }}
+            PORT=${{ vars.PORT }}
+            GOOSE_DRIVER=${{ vars.GOOSE_DRIVER }}
+            GOOSE_DBSTRING=${{ secrets.GOOSE_DBSTRING }}
+            CONN_STR=${{ secrets.CONN_STR }}
+            MAX_CONNECTIONS=${{ vars.MAX_CONNECTIONS }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            JWT_TOKEN_DURATION=${{ vars.JWT_TOKEN_DURATION }}
+            ETHEREUM_URL=${{ vars.ETHEREUM_URL }}
+            ETHEREUM_SECRET_KEY=${{ secrets.ETHEREUM_SECRET_KEY }}
+            REDIS_ADDR=${{ vars.REDIS_ADDR }}
+            REDIS_USERNAME=${{ secrets.REDIS_USERNAME }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            REDIS_DB=${{ vars.REDIS_DB }}
+            KAFKA_BROKERS=${{ vars.KAFKA_BROKERS }}
+            KAFKA_TOPIC=${{ vars.KAFKA_TOPIC }}
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ vars.SMTP_PORT }}
+            SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             EOF
-            
-            # Login to GitHub Container Registry
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${DEPLOY_REGISTRY} -u ${{ github.actor }} --password-stdin
-            
-            # Pull the latest image
-            docker pull ${DEPLOY_REGISTRY}/${DEPLOY_IMAGE_NAME}-api:${DEPLOY_VERSION}
-            
-            # Stop and remove existing container
-            docker stop api-container || true
-            docker rm api-container || true
-            
-            # Run new container with environment variables from file
+
+            # Debug: Check file exists and contents
+            ls -la /home/${{ secrets.SERVER_USERNAME }}/.env
+            cat /home/${{ secrets.SERVER_USERNAME }}/.env
+
+            # Set proper permissions
+            chmod 600 /home/${{ secrets.SERVER_USERNAME }}/.env
+
+            # Run container with absolute path to env file
             docker run -d \
               --name api-container \
               --restart unless-stopped \
               --network app-network \
-              -p "${DEPLOY_PORT}:${DEPLOY_PORT}" \
-              --env-file .env \
-              ${DEPLOY_REGISTRY}/${DEPLOY_IMAGE_NAME}-api:${DEPLOY_VERSION}
-            
+              -p "${{ vars.PORT }}:${{ vars.PORT }}" \
+              --env-file /home/${{ secrets.SERVER_USERNAME }}/.env \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}
+
+            # Debug: Check container env variables
+            docker exec api-container env
+
             # Clean up old images
             docker image prune -f
-            
+
             # Verify container is running
             docker ps | grep api-container
