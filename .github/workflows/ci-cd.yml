@@ -107,25 +107,22 @@ jobs:
           port: 22
           script_stop: true # Dừng khi gặp lỗi
           script: |
-            # Cleanup
-            if [ "$(docker ps -aq -f name=${{ env.CONTAINER_NAME }})" ]; then
-              docker stop ${{ env.CONTAINER_NAME }}
-              docker rm ${{ env.CONTAINER_NAME }}
-            fi
+            FULL_IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api:${{ env.VERSION }}"
 
-            # Check network exists
-            if ! docker network inspect ${{ env.NETWORK_NAME }} >/dev/null 2>&1; then
-              docker network create ${{ env.NETWORK_NAME }}
+            # Cleanup existing container
+            if [ "$(docker ps -aq -f name=api-container)" ]; then
+              docker stop api-container
+              docker rm api-container
             fi
 
             # Deploy container
             docker run -d \
-              --name ${{ env.CONTAINER_NAME }} \
+              --name api-container \
               --restart unless-stopped \
-              --network ${{ env.NETWORK_NAME }} \
-              -p "${{ vars.PORT }}:${{ vars.PORT }}" \
+              --network app-network \
+              -p "8080:8080" \
               --env-file /home/${{ secrets.SERVER_USERNAME }}/.env \
-              ${IMAGE_TAG}
+              $FULL_IMAGE_TAG
 
             # Health check
             timeout 30s bash -c 'while ! curl -s http://localhost:${{ vars.PORT }}/health; do sleep 2; done'
