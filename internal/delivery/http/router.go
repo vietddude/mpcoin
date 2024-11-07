@@ -66,6 +66,7 @@ func NewRouter(
 		transactions.Use(middleware.AuthMiddleware(*jwtService))
 		{
 			transactions.GET("/", txnHandler.GetTransactions)
+			transactions.POST("/", txnHandler.CreateAndSubmitTransaction)
 			transactions.POST("/create", txnHandler.CreateTransaction)
 			transactions.POST("/submit", txnHandler.SubmitTransaction)
 		}
